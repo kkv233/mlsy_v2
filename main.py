@@ -1,0 +1,191 @@
+import os
+import sys
+import json
+import time
+import logging
+from pathlib import Path
+
+from core.llm import LLMClient
+from core.agent_base import ProbeResult, ProbeTask
+from core import tools
+from agents.planner import PlannerAgent
+from agents.memory_latency import MemoryLatencyAgent
+from agents.bandwidth import BandwidthAgent
+from agents.l2_capacity import L2CapacityAgent
+from agents.boost_frequency import BoostFrequencyAgent
+from agents.resource_penalty import ResourcePenaltyAgent
+from agents.analyzer import AnalyzerAgent
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
+
+SPECIALIST_MAP = {
+    "memory_latency": MemoryLatencyAgent,
+    "bandwidth": BandwidthAgent,
+    "l2_capacity": L2CapacityAgent,
+    "frequency": BoostFrequencyAgent,
+    "resource_penalty": ResourcePenaltyAgent,
+}
+
+MAX_ANALYSIS_RETRIES = 2
+
+
+def select_specialist(task: ProbeTask, llm: LLMClient):
+    category = task.methodology.get("matched_category", "unknown")
+    if category in SPECIALIST_MAP:
+        return SPECIALIST_MAP[category](llm)
+    target_lower = task.target.lower()
+    if any(kw in target_lower for kw in ["latency", "delay", "access_time"]):
+        return MemoryLatencyAgent(llm)
+    if any(kw in target_lower for kw in ["bandwidth", "throughput", "bw"]):
+        return BandwidthAgent(llm)
+    if any(kw in target_lower for kw in ["l2_cache", "l2_size", "cache_capacity"]):
+        return L2CapacityAgent(llm)
+    if any(kw in target_lower for kw in ["clock", "frequency", "mhz", "boost"]):
+        return BoostFrequencyAgent(llm)
+    if any(kw in target_lower for kw in ["bank_conflict", "penalty", "conflict_cost"]):
+        return ResourcePenaltyAgent(llm)
+    return MemoryLatencyAgent(llm)
+
+
+def run(target_spec_path: str = "target_spec.json", output_path: str = "results.json"):
+    logger.info("Starting GPU Hardware Probing Agent System")
+    logger.info(f"Reading target spec from: {target_spec_path}")
+
+    spec_path = Path(target_spec_path)
+    if not spec_path.exists():
+        logger.error(f"target_spec.json not found at {target_spec_path}")
+        sys.exit(1)
+
+    with open(spec_path) as f:
+        target_spec = json.load(f)
+
+    targets = target_spec.get("targets", [])
+    run_executable = target_spec.get("run", None)
+    logger.info(f"Targets: {targets}")
+    if run_executable:
+        logger.info(f"Executable provided: {run_executable}")
+
+    llm = LLMClient()
+    logger.info(f"LLM: model={llm.model}, base_url={llm.base_url}")
+
+    env_anomalies = tools.check_environment_tampering()
+    if env_anomalies:
+        logger.warning(f"Environment anomalies detected: {list(env_anomalies.keys())}")
+    else:
+        logger.info("No environment anomalies detected")
+
+    gpu_info = tools.get_gpu_info()
+    logger.info(f"GPU info: {gpu_info}")
+
+    logger.info("Phase 1: Planning")
+    planner = PlannerAgent(llm)
+    tasks = planner.plan(target_spec)
+    logger.info(f"Planned {len(tasks)} tasks in order: {[t.target for t in tasks]}")
+
+    logger.info("Phase 2: Executing specialist agents")
+    results: dict[str, ProbeResult] = {}
+    for i, task in enumerate(tasks):
+        logger.info(f"[{i+1}/{len(tasks)}] Probing: {task.target}")
+        task.context.update({
+            k: v for k, v in results.items()
+            if k in task.dependencies
+        })
+        task.context["gpu_info"] = gpu_info
+        task.context["env_anomalies"] = env_anomalies
+
+        specialist = select_specialist(task, llm)
+        result = specialist.probe(task)
+        results[task.target] = result
+        logger.info(f"  Result: {task.target} = {result.value} (confidence={result.confidence})")
+
+    logger.info("Phase 3: Analysis and validation")
+    analyzer = AnalyzerAgent(llm)
+    for retry_round in range(MAX_ANALYSIS_RETRIES):
+        verdict = analyzer.analyze(results, env_anomalies)
+        if verdict.all_valid:
+            logger.info("All results validated successfully")
+            break
+        logger.warning(f"Analysis round {retry_round + 1}: {len(verdict.retries)} issues found")
+        for retry_info in verdict.retries:
+            target = retry_info["target"]
+            reason = retry_info["reason"]
+            logger.warning(f"  Retrying {target}: {reason}")
+            matching_task = next((t for t in tasks if t.target == target), None)
+            if matching_task:
+                matching_task.context.update({
+                    k: v for k, v in results.items()
+                    if k in matching_task.dependencies
+                })
+                specialist = select_specialist(matching_task, llm)
+                specialist.feedback_history = [reason]
+                new_result = specialist.probe(matching_task)
+                if new_result.confidence > results[target].confidence or new_result.value >= 0:
+                    results[target] = new_result
+                    logger.info(f"  Retry result: {target} = {new_result.value} (confidence={new_result.confidence})")
+
+    evidence_summary = analyzer.generate_evidence_summary(results, env_anomalies)
+    logger.info("\n" + evidence_summary)
+
+    output = {}
+    for target, result in results.items():
+        output[target] = result.value
+
+    with open(output_path, "w") as f:
+        json.dump(output, f, indent=2)
+    logger.info(f"Results written to {output_path}")
+    logger.info(f"Final results: {json.dumps(output, indent=2)}")
+
+    evidence_path = Path(output_path).parent / "evidence_log.txt"
+    with open(evidence_path, "w") as f:
+        f.write(evidence_summary)
+        f.write("\n\n=== Analysis & Cross-Validation ===\n")
+        verdict = analyzer.analyze(results, env_anomalies)
+        if verdict.env_anomalies:
+            f.write("== Environment Analysis ==\n")
+            for key, val in verdict.env_anomalies.items():
+                f.write(f"  {key}: {val}\n")
+            f.write("\n")
+        if verdict.cross_validation_notes:
+            f.write("== Cross-Validation Notes ==\n")
+            for note in verdict.cross_validation_notes:
+                f.write(f"  - {note}\n")
+            f.write("\n")
+        if verdict.retries:
+            f.write("== Issues Detected & Retries ==\n")
+            for retry in verdict.retries:
+                f.write(f"  Target: {retry['target']}\n")
+                f.write(f"  Reason: {retry['reason']}\n")
+                f.write("\n")
+        if verdict.all_valid:
+            f.write("== Overall Assessment ==\n")
+            f.write("  All results passed validation.\n")
+        else:
+            f.write("== Overall Assessment ==\n")
+            f.write(f"  {len(verdict.retries)} issues were detected and retried.\n")
+        f.write("\n\n=== Detailed Evidence ===\n")
+        for target, result in results.items():
+            f.write(f"\n--- {target} ---\n")
+            f.write(f"Value: {result.value}\n")
+            f.write(f"Confidence: {result.confidence}\n")
+            f.write(f"Reasoning: {result.reasoning}\n")
+            if result.evidence:
+                if "code" in result.evidence:
+                    f.write(f"\nGenerated Code:\n{result.evidence['code']}\n")
+                if "output" in result.evidence:
+                    f.write(f"\nExecution Output:\n{result.evidence['output']}\n")
+                if "ncu_validation" in result.evidence:
+                    f.write(f"\nNCU Validation:\n{result.evidence['ncu_validation']}\n")
+    logger.info(f"Evidence log written to {evidence_path}")
+
+    return output
+
+
+if __name__ == "__main__":
+    spec_path = sys.argv[1] if len(sys.argv) > 1 else "target_spec.json"
+    out_path = sys.argv[2] if len(sys.argv) > 2 else "results.json"
+    run(spec_path, out_path)
