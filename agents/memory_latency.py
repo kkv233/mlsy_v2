@@ -4,7 +4,7 @@ from core.agent_base import SpecialistAgent, ProbeTask, ProbeResult
 
 class MemoryLatencyAgent(SpecialistAgent):
     def __init__(self, llm: LLMClient):
-        super().__init__(llm, agent_name="memory_latency", max_retries=5)
+        super().__init__(llm, agent_name="memory_latency", max_retries=5, execution_timeout=60)
 
     SYSTEM_PROMPT = """You are an expert CUDA programmer specializing in memory hierarchy characterization.
 Your task is to write micro-benchmarks that measure memory access latency at different levels of the GPU memory hierarchy (L1, L2, DRAM).
@@ -32,12 +32,23 @@ Rely solely on actual hardware measurement."""
 
         target_lower = task.target.lower()
         size_hint = ""
+        extra_requirements = ""
         if "l1" in target_lower:
             size_hint = "Use a small array (4KB-32KB) to ensure data stays in L1 cache."
         elif "l2" in target_lower:
             size_hint = "Use a medium array (256KB-4MB) that fits in L2 but exceeds L1."
         elif "dram" in target_lower:
             size_hint = "Use a large array (64MB-256MB) that far exceeds L2 cache capacity to force DRAM access."
+            extra_requirements = """
+DRAM LATENCY SPECIFIC REQUIREMENTS:
+- Array size MUST be at least 64MB (524288 nodes of 128 bytes each) to exceed L2 cache
+- MUST flush L2 cache before each measurement by accessing a separate large buffer
+- Pointer chasing MUST use a single thread (threadIdx.x == 0 only)
+- Random permutation MUST be done on the GPU before measurement
+- Use at least 10000 chase steps per measurement
+- Run at least 50 iterations, report median
+- The flush kernel should access a different large array (at least 32MB) with stride-1 pattern
+  to evict all data from L2 before the pointer chase"""
 
         return f"""Write a CUDA C++ micro-benchmark to measure: {task.target}
 
@@ -52,12 +63,13 @@ Requirements:
 1. Complete, self-contained CUDA C++ program (single .cu file)
 2. Use pointer chasing with random permutation to defeat prefetcher
 3. Each node should be one cache line (128 bytes) with the next pointer at the start
-4. Use clock64() for timing, with warm-up and multiple iterations
+4. MUST use clock64() for timing (NOT clock() which is 32-bit and wraps)
 5. Output ONLY the measured latency in cycles as a single number on the last line
 6. Do NOT use cudaGetDeviceProperties
 7. For DRAM: ensure array size >> L2 cache (at least 64MB)
 8. For L1: ensure array size << L1 cache (at most 16KB)
 9. For L2: ensure array size > L1 but < L2 (256KB to 2MB)
+{extra_requirements}
 
 Output ONLY the CUDA C++ source code."""
 

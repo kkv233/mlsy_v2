@@ -4,7 +4,7 @@ from core.agent_base import SpecialistAgent, ProbeTask, ProbeResult
 
 class ResourcePenaltyAgent(SpecialistAgent):
     def __init__(self, llm: LLMClient):
-        super().__init__(llm, agent_name="resource_penalty", max_retries=5)
+        super().__init__(llm, agent_name="resource_penalty", max_retries=8)
 
     SYSTEM_PROMPT = """You are an expert CUDA programmer specializing in Shared Memory bank conflict characterization.
 Your task is to write micro-benchmarks that measure the latency penalty caused by bank conflicts in Shared Memory.
@@ -38,17 +38,20 @@ Design methodology:
 Requirements:
 1. Complete, self-contained CUDA C++ program (single .cu file)
 2. Implement TWO kernels:
-   a. Conflict-free kernel: threads access shared memory sequentially (thread i accesses index i)
-   b. Conflict kernel: threads access shared memory with a pattern that causes bank conflicts
-      (e.g., thread i accesses index i * stride where stride causes same-bank access)
-3. Both kernels must perform the SAME total number of shared memory operations
-4. Use clock64() to measure cycles for each kernel
-5. Bank conflict penalty = (conflict_cycles - free_cycles) / num_accesses_per_thread
-6. Run multiple iterations and report the median
-7. Output ONLY the penalty in cycles as a single number on the last line
-8. Do NOT use cudaGetDeviceProperties
-9. Use __syncthreads() between writes and reads to ensure proper ordering
-10. Make sure the conflict pattern actually causes bank conflicts (verify with ncu later)
+   a. conflict_free_kernel: each thread reads smem[tid] (sequential access, no bank conflicts)
+   b. conflict_kernel: all threads in a warp read from the SAME bank but DIFFERENT addresses
+      Example: thread i accesses smem[i * 32] - all threads access bank 0 but at different addresses
+      This creates a 32-way bank conflict (worst case)
+3. Both kernels must perform the SAME total number of shared memory read+write operations
+4. MUST use clock64() for timing (NOT clock() which is 32-bit)
+5. Each kernel: start = clock64(), do N accesses, end = clock64(), compute cycles
+6. Penalty = (conflict_cycles - free_cycles) / (WARP_SIZE * num_accesses_per_thread)
+7. Run at least 10 iterations, report median
+8. Output ONLY the penalty in cycles as a single number on the last line
+9. Do NOT use cudaGetDeviceProperties
+10. Use __syncthreads() between writes and reads
+11. IMPORTANT: The conflict pattern must be smem[i * 32] or smem[i * 32 + offset] where all threads
+    map to the same bank. NOT smem[tid * 32 % SIZE] which may map to different addresses/banks.
 
 Output ONLY the CUDA C++ source code."""
 

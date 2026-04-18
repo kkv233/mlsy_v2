@@ -8,6 +8,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE = Path(os.environ.get("WORKSPACE_DIR", str(PROJECT_ROOT / "workspace")))
+_detected_sm_arch = None
 
 
 def _run_command(cmd: str, cwd: str = None, timeout: int = 120) -> tuple[bool, str, str]:
@@ -27,12 +28,37 @@ def _run_command(cmd: str, cwd: str = None, timeout: int = 120) -> tuple[bool, s
         return False, "", str(e)
 
 
+def detect_sm_arch() -> str:
+    global _detected_sm_arch
+    if _detected_sm_arch:
+        return _detected_sm_arch
+    ok, stdout, _ = _run_command("nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>&1")
+    if ok and stdout.strip():
+        cap = stdout.strip().replace(".", "")
+        _detected_sm_arch = f"sm_{cap}"
+        return _detected_sm_arch
+    ok2, stdout2, _ = _run_command("python3 -c \"import subprocess; r=subprocess.run(['nvidia-smi','--query-gpu=compute_cap','--format=csv,noheader'],capture_output=True,text=True); print(r.stdout.strip())\" 2>&1")
+    if ok2 and stdout2.strip() and stdout2.strip() != "N/A":
+        cap = stdout2.strip().replace(".", "")
+        _detected_sm_arch = f"sm_{cap}"
+        return _detected_sm_arch
+    ok3, stdout3, _ = _run_command("cat /proc/driver/nvidia/gpus/0000:*/information 2>&1")
+    if ok3 and stdout3:
+        match = re.search(r"Compute Cap.*?(\d+)\.(\d+)", stdout3)
+        if match:
+            _detected_sm_arch = f"sm_{match.group(1)}{match.group(2)}"
+            return _detected_sm_arch
+    _detected_sm_arch = "sm_86"
+    return _detected_sm_arch
+
+
 def compile_cuda(source_code: str, output_name: str, extra_flags: str = "") -> tuple[bool, str, str]:
     WORKSPACE.mkdir(parents=True, exist_ok=True)
     src_path = WORKSPACE / f"{output_name}.cu"
     bin_path = WORKSPACE / output_name
     src_path.write_text(source_code)
-    cmd = f"nvcc -o {bin_path} {src_path} -arch=sm_86 {extra_flags} 2>&1"
+    sm_arch = detect_sm_arch()
+    cmd = f"nvcc -o {bin_path} {src_path} -arch={sm_arch} {extra_flags} 2>&1"
     ok, stdout, stderr = _run_command(cmd)
     combined = stdout + stderr
     if not ok:
@@ -46,9 +72,12 @@ def execute_binary(binary_path: str, args: str = "", timeout: int = 60) -> tuple
     return ok, stdout, stderr
 
 
-def run_ncu(binary_path: str, metrics: list[str], args: str = "", timeout: int = 120) -> tuple[bool, str, str]:
+def run_ncu(binary_path: str, metrics: list[str], args: str = "", timeout: int = 120, kernel_filter: str = "") -> tuple[bool, str, str]:
     metrics_str = ",".join(metrics)
-    cmd = f"ncu --target-processes all --metrics {metrics_str} {binary_path} {args} 2>&1"
+    kernel_args = ""
+    if kernel_filter:
+        kernel_args = f"--kernel-name regex:{kernel_filter} --launch-skip 0 --launch-count 999"
+    cmd = f"ncu --target-processes all --metrics {metrics_str} {kernel_args} {binary_path} {args} 2>&1"
     ok, stdout, stderr = _run_command(cmd, timeout=timeout)
     combined = stdout + stderr
     return ok, combined, ""
@@ -83,21 +112,35 @@ def run_ncu_section(binary_path: str, section: str = "SpeedOfLight", args: str =
 
 def get_gpu_info() -> dict:
     info = {}
-    ok, stdout, _ = _run_command("nvidia-smi --query-gpu=name,memory.total,clocks.max.sm,clocks.max.mem,power.limit --format=csv,noheader 2>&1")
+    ok, stdout, _ = _run_command("nvidia-smi --query-gpu=name,memory.total,clocks.max.sm,clocks.max.mem,power.limit,power.default_limit --format=csv,noheader 2>&1")
     if ok and stdout.strip():
         parts = [p.strip() for p in stdout.strip().split(",")]
         if len(parts) >= 4:
             info["gpu_name"] = parts[0]
-            info["memory_total_mb"] = parts[1]
-            info["max_sm_clock_mhz"] = parts[2]
-            info["max_mem_clock_mhz"] = parts[3]
+            info["memory_total_mb"] = _parse_numeric(parts[1])
+            info["max_sm_clock_mhz"] = _parse_numeric(parts[2])
+            info["max_mem_clock_mhz"] = _parse_numeric(parts[3])
+            if len(parts) >= 6:
+                info["power_limit_w"] = _parse_numeric(parts[4])
+                info["power_default_limit_w"] = _parse_numeric(parts[5])
     ok2, stdout2, _ = _run_command("nvidia-smi --query-gpu=clocks.sm,clocks.mem,power.draw --format=csv,noheader 2>&1")
     if ok2 and stdout2.strip():
         parts2 = [p.strip() for p in stdout2.strip().split(",")]
         if len(parts2) >= 2:
-            info["current_sm_clock_mhz"] = parts2[0]
-            info["current_mem_clock_mhz"] = parts2[1]
+            info["current_sm_clock_mhz"] = _parse_numeric(parts2[0])
+            info["current_mem_clock_mhz"] = _parse_numeric(parts2[1])
+            if len(parts2) >= 3:
+                info["current_power_draw_w"] = _parse_numeric(parts2[2])
     return info
+
+
+def _parse_numeric(s: str) -> float:
+    s = s.strip()
+    s = re.sub(r'[^\d.]', '', s)
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
 
 
 def check_environment_tampering() -> dict:

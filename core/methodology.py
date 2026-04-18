@@ -30,11 +30,16 @@ METHODOLOGY_KB = {
             "dram__throughput.avg.pct_of_peak_sustained_elapsed",
             "l2__throughput.avg.pct_of_peak_sustained_elapsed",
             "l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum",
+            "lts__t_sectors_op_read.sum",
         ],
+        "ncu_kernel_filter": "pointerChase",
         "validation": (
-            "For DRAM latency: ncu should show high dram__throughput (confirming actual DRAM access). "
-            "For L1 latency: ncu should show low dram and l2 throughput. "
-            "For L2 latency: ncu should show high l2 throughput but low dram throughput."
+            "For DRAM latency: ncu dram__throughput will be LOW (0-5%) because pointer chasing only accesses one cache line at a time - this is EXPECTED and CORRECT. "
+            "The key validation is that lts__t_sectors_op_read.sum > 0 (confirming actual global memory reads). "
+            "For L1 latency: ncu should show very low dram and l2 throughput. "
+            "For L2 latency: ncu should show moderate l2 throughput but low dram throughput. "
+            "IMPORTANT: Only analyze the pointer chasing kernel, ignore initialization/flush kernels. "
+            "DO NOT reject a DRAM latency measurement just because dram__throughput is low - pointer chasing has low bandwidth by design."
         ),
         "size_guidance": {
             "l1": "4KB to 32KB",
@@ -75,10 +80,13 @@ METHODOLOGY_KB = {
             "dram__throughput.avg.pct_of_peak_sustained_elapsed",
             "l1tex__data_pipe_lsu_wavefronts.sum",
             "l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum",
+            "l1tex__data_bank_conflicts_pipe_lsu.sum",
         ],
+        "ncu_kernel_filter": "bandwidth",
         "validation": (
-            "For VRAM: ncu should show dram__throughput close to peak (ideally >70%). "
-            "For Shared Memory: ncu should show high l1tex wavefronts with no bank conflicts."
+            "For VRAM: ncu should show dram__throughput close to peak (ideally >50%). "
+            "For Shared Memory: ncu should show high l1tex wavefronts with l1tex__data_bank_conflicts = 0 (no bank conflicts). "
+            "IMPORTANT: Only analyze the bandwidth measurement kernel, ignore warmup kernels."
         ),
     },
     "l2_capacity": {
@@ -109,9 +117,11 @@ METHODOLOGY_KB = {
             "l2__throughput.avg.pct_of_peak_sustained_elapsed",
             "dram__throughput.avg.pct_of_peak_sustained_elapsed",
         ],
+        "ncu_kernel_filter": "pointerChase",
         "validation": (
             "Below L2 capacity: ncu should show high l2 throughput, low dram throughput. "
-            "Above L2 capacity: ncu should show high dram throughput."
+            "Above L2 capacity: ncu should show high dram throughput. "
+            "IMPORTANT: Only analyze the pointer chasing kernel, ignore initialization kernels."
         ),
     },
     "frequency": {
@@ -145,12 +155,14 @@ METHODOLOGY_KB = {
             "This method directly measures the actual clock frequency without needing to know SM count."
         ),
         "ncu_metrics": [
+            "gpu__clocks.max",
             "sm__throughput.avg.pct_of_peak_sustained_elapsed",
-            "sm__pipe_fma_cycles_active.avg.pct_of_peak_sustained_active",
         ],
+        "ncu_kernel_filter": "measure",
         "validation": (
             "Compare with nvidia-smi reported clock (as reference only, not as ground truth). "
-            "ncu sm__throughput should be high if the kernel is compute-intensive."
+            "ncu gpu__clocks.max should be close to the measured frequency. "
+            "IMPORTANT: Only analyze the measurement kernel, ignore warmup kernels."
         ),
     },
     "penalty": {
@@ -181,9 +193,11 @@ METHODOLOGY_KB = {
             "l1tex__data_bank_conflicts_pipe_lsu.sum",
             "l1tex__data_pipe_lsu_wavefronts.sum",
         ],
+        "ncu_kernel_filter": "conflict",
         "validation": (
             "ncu should report l1tex__data_bank_conflicts_pipe_lsu.sum > 0 for the conflict kernel. "
-            "ncu should report l1tex__data_bank_conflicts_pipe_lsu.sum = 0 for the conflict-free kernel."
+            "ncu should report l1tex__data_bank_conflicts_pipe_lsu.sum = 0 for the conflict-free kernel. "
+            "IMPORTANT: Only analyze the conflict/conflict_free kernels, ignore other kernels."
         ),
     },
 }

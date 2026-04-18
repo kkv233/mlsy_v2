@@ -92,21 +92,45 @@ class AnalyzerAgent:
                         })
 
         if any("vram_bandwidth" in t.lower() or "dram_bandwidth" in t.lower() for t in results):
-            if any("boost_clock" in t.lower() or "frequency" in t.lower() or "mhz" in t.lower() for t in results):
-                freq_target = next(t for t in results if "clock" in t.lower() or "frequency" in t.lower() or "mhz" in t.lower())
-                bw_target = next(t for t in results if "bandwidth" in t.lower())
-                freq_mhz = results[freq_target].value
+            bus_width = self._detect_bus_width()
+            gpu_info = tools.get_gpu_info()
+            mem_clock_mhz = gpu_info.get("max_mem_clock_mhz", 0)
+            bw_target = next((t for t in results if "bandwidth" in t.lower()), None)
+            if bw_target and bus_width > 0:
                 bw_gbps = results[bw_target].value
-                if freq_mhz > 0:
-                    theoretical_bw = freq_mhz * 384 * 2 / 8 / 1000
-                    if theoretical_bw > 0 and abs(bw_gbps - theoretical_bw) / theoretical_bw > 0.5:
-                        issues.append({
-                            "target": bw_target,
-                            "reason": f"Bandwidth {bw_gbps} GB/s seems inconsistent with frequency {freq_mhz} MHz (theoretical ~{theoretical_bw:.0f} GB/s for 384-bit bus)",
-                            "severity": "medium",
-                        })
+                if mem_clock_mhz > 0:
+                    theoretical_bw = mem_clock_mhz * bus_width * 2 / 8 / 1000
+                else:
+                    freq_target = next((t for t in results if "clock" in t.lower() or "frequency" in t.lower() or "mhz" in t.lower()), None)
+                    if freq_target:
+                        theoretical_bw = results[freq_target].value * bus_width * 2 / 8 / 1000
+                    else:
+                        theoretical_bw = 0
+                if theoretical_bw > 0 and abs(bw_gbps - theoretical_bw) / theoretical_bw > 0.5:
+                    issues.append({
+                        "target": bw_target,
+                        "reason": f"Bandwidth {bw_gbps} GB/s seems inconsistent (theoretical ~{theoretical_bw:.0f} GB/s for {bus_width}-bit bus at {mem_clock_mhz} MHz mem clock)",
+                        "severity": "medium",
+                    })
 
         return issues
+
+    def _detect_bus_width(self) -> int:
+        known_bus_widths = {
+            "A100": 512, "A100-SXM4": 512, "A30": 384,
+            "RTX 4090": 384, "RTX 4080": 256, "RTX 4070": 192,
+            "RTX 3080": 320, "RTX 3080 Ti": 384, "RTX 3090": 384, "RTX 3070": 256,
+            "A10": 384, "A10G": 384,
+            "H100": 512, "H100-SXM5": 512, "H200": 512,
+            "V100": 4096, "V100-SXM2": 4096,
+            "L4": 192, "L40": 384, "T4": 256,
+        }
+        gpu_info = tools.get_gpu_info()
+        gpu_name = gpu_info.get("gpu_name", "")
+        for key, width in known_bus_widths.items():
+            if key.lower() in gpu_name.lower():
+                return width
+        return 384
 
     def _check_env_consistency(self, results: dict[str, ProbeResult], env_anomalies: dict) -> list[dict]:
         issues = []
@@ -215,14 +239,19 @@ class AnalyzerAgent:
                 bw_val = v
         
         if freq_val and bw_val and freq_val > 0:
-            # Theoretical bandwidth = freq * bus_width * DDR_factor / 8
-            # For A10: 384-bit bus, DDR (2x)
-            theoretical_bw = freq_val * 384 * 2 / 8 / 1000  # GB/s
+            bus_width = self._detect_bus_width()
+            gpu_info = tools.get_gpu_info()
+            mem_clock_mhz = gpu_info.get("max_mem_clock_mhz", 0)
+            if mem_clock_mhz > 0:
+                theoretical_bw = mem_clock_mhz * bus_width * 2 / 8 / 1000
+                clock_source = f"memory clock {mem_clock_mhz} MHz"
+            else:
+                theoretical_bw = freq_val * bus_width * 2 / 8 / 1000
+                clock_source = f"SM clock {freq_val:.1f} MHz"
             ratio = bw_val / theoretical_bw if theoretical_bw > 0 else 0
             lines.append(f"Frequency-Bandwidth Consistency:")
-            lines.append(f"  Measured frequency: {freq_val:.1f} MHz")
             lines.append(f"  Measured VRAM bandwidth: {bw_val:.2f} GB/s")
-            lines.append(f"  Theoretical peak bandwidth (384-bit bus): {theoretical_bw:.1f} GB/s")
+            lines.append(f"  Theoretical peak bandwidth ({bus_width}-bit bus, {clock_source}): {theoretical_bw:.1f} GB/s")
             lines.append(f"  Efficiency: {ratio*100:.1f}%")
             if ratio < 0.5:
                 lines.append(f"  Note: Low efficiency suggests memory frequency may be locked below nominal")

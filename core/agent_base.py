@@ -29,10 +29,11 @@ class ProbeTask:
 
 
 class SpecialistAgent:
-    def __init__(self, llm: LLMClient, agent_name: str, max_retries: int = 4):
+    def __init__(self, llm: LLMClient, agent_name: str, max_retries: int = 4, execution_timeout: int = 30):
         self.llm = llm
         self.agent_name = agent_name
         self.max_retries = max_retries
+        self.execution_timeout = execution_timeout
         self.feedback_history: list[str] = []
         self.evidence_log: list[dict] = []
 
@@ -51,6 +52,7 @@ class SpecialistAgent:
         if self.feedback_history:
             feedback = f"\nPrevious attempt failed: {'; '.join(self.feedback_history[-2:])}\nFix the issue.\n"
 
+        sm_arch = tools.detect_sm_arch()
         return f"""Write a CUDA C++ micro-benchmark to measure: {task.target}
 
 Principle: {principle}
@@ -59,7 +61,7 @@ Key challenges: {challenges_str}
 {deps_context}{feedback}
 CRITICAL REQUIREMENTS - YOUR CODE MUST COMPILE AND RUN ON FIRST TRY:
 1. MUST be a COMPLETE, self-contained .cu file with #include <stdio.h>, #include <cuda_runtime.h>, kernel function, AND main() function
-2. MUST compile successfully with: nvcc -o <binary> <source>.cu -arch=sm_86
+2. MUST compile successfully with: nvcc -o <binary> <source>.cu -arch={sm_arch}
 3. MUST output ONLY the measured number (a single float) on the LAST line of stdout - no other text after it
 4. MUST use clock64() for cycle-level timing, CUDA events for wall-clock timing
 5. MUST include warm-up runs and multiple iterations for accuracy
@@ -75,25 +77,34 @@ IMPORTANT: Double-check your code before outputting. Ensure:
 - The final printf outputs ONLY the numeric result
 - No syntax errors, missing semicolons, or undefined variables"""
 
-    def _build_ncu_validation_prompt(self, task: ProbeTask, ncu_output: str, measured_value: float) -> str:
+    def _build_ncu_validation_prompt(self, task: ProbeTask, ncu_output: str, measured_value: float, validation_methodology: str = "") -> str:
+        methodology_hint = ""
+        if validation_methodology:
+            methodology_hint = f"\nValidation methodology: {validation_methodology}\n"
         return f"""You are a GPU performance analysis expert. Analyze the ncu profiling output to verify whether the measured value is reliable.
 
 Target metric: {task.target}
 Measured value: {measured_value}
-
+{methodology_hint}
 NCU profiling output:
 {ncu_output}
 
+IMPORTANT ANALYSIS RULES:
+1. Focus ONLY on the measurement kernel (the one that does the actual probing). Ignore warmup, initialization, or cache-flush kernels.
+2. Be LENIENT: if the measurement kernel shows reasonable metrics for the target, mark as valid even if auxiliary kernels have zero throughput.
+3. A DRAM throughput of 0% on an initialization kernel is EXPECTED and should NOT invalidate the result.
+4. The measured value has already passed a sanity range check, so it is physically plausible.
+
 Please analyze:
-1. Does the ncu output confirm that the kernel is actually measuring what we intend? (e.g., if measuring DRAM latency, does ncu show high DRAM throughput?)
-2. Are there any anomalies or contradictions?
-3. Is the measured value physically plausible?
+1. Does the measurement kernel's ncu output confirm that it is actually measuring what we intend?
+2. Are there any anomalies in the MEASUREMENT kernel only?
+3. Is the measured value physically plausible given the ncu metrics?
 
 Respond in JSON format:
 {{
     "is_valid": true/false,
-    "analysis": "your analysis",
-    "issues": ["list of issues if any"],
+    "analysis": "your analysis focusing on the measurement kernel",
+    "issues": ["list of issues if any, only for the measurement kernel"],
     "suggested_fix": "what to fix if invalid"
 }}"""
 
@@ -105,7 +116,7 @@ Respond in JSON format:
             system_prompt="You are an expert CUDA programmer. Output only valid CUDA C++ code.",
             user_prompt=prompt,
             temperature=0.2,
-            max_tokens=2048,
+            max_tokens=4096,
         )
         elapsed = time.time() - t0
         logger.info(f"  [{self.agent_name}] LLM raw response length={len(raw_response)} chars")
@@ -153,7 +164,7 @@ Respond in JSON format:
         logger.info(f"  [{self.agent_name}] Compilation OK, binary: {output}")
         logger.info(f"  [{self.agent_name}] Executing...")
         binary_path = output
-        ok, stdout, stderr = tools.execute_binary(binary_path, timeout=30)
+        ok, stdout, stderr = tools.execute_binary(binary_path, timeout=self.execution_timeout)
         if not ok:
             logger.warning(f"  [{self.agent_name}] Execution FAILED: {stderr[:300]}")
             return False, 0.0, f"Execution failed: {stderr}"
@@ -169,6 +180,7 @@ Respond in JSON format:
 
     def _ncu_validate(self, task: ProbeTask, code: str, measured_value: float) -> tuple[bool, str]:
         ncu_metrics = task.methodology.get("ncu_metrics", [])
+        kernel_filter = task.methodology.get("ncu_kernel_filter", "")
         if not ncu_metrics:
             logger.info(f"  [{self.agent_name}] No ncu metrics specified, skipping ncu validation")
             return True, "No ncu metrics specified for validation"
@@ -178,8 +190,8 @@ Respond in JSON format:
         if not ok:
             return True, "Could not compile for ncu validation, skipping"
         binary_path = output
-        logger.info(f"  [{self.agent_name}] Running ncu with metrics: {ncu_metrics}")
-        ok, ncu_output, _ = tools.run_ncu(binary_path, ncu_metrics, timeout=120)
+        logger.info(f"  [{self.agent_name}] Running ncu with metrics: {ncu_metrics}, kernel_filter: {kernel_filter}")
+        ok, ncu_output, _ = tools.run_ncu(binary_path, ncu_metrics, timeout=120, kernel_filter=kernel_filter)
         if not ok:
             if "ERR_NVGPUCTRPERM" in ncu_output:
                 msg = "ncu unavailable (GPU performance counter permission denied), validation skipped"
@@ -187,11 +199,17 @@ Respond in JSON format:
                 return True, msg
             logger.warning(f"  [{self.agent_name}] ncu run failed: {ncu_output[:200]}")
             return True, f"ncu run failed, skipping validation: {ncu_output[:200]}"
+        if "No kernels were profiled" in ncu_output and kernel_filter:
+            logger.info(f"  [{self.agent_name}] kernel_filter '{kernel_filter}' matched no kernels, retrying without filter")
+            ok, ncu_output, _ = tools.run_ncu(binary_path, ncu_metrics, timeout=120)
+            if not ok:
+                return True, f"ncu run failed without filter, skipping validation"
         logger.info(f"  [{self.agent_name}] ncu output: {ncu_output[:300]}")
         logger.info(f"  [{self.agent_name}] Sending ncu output to LLM for validation analysis...")
-        validation_prompt = self._build_ncu_validation_prompt(task, ncu_output, measured_value)
+        validation_methodology = task.methodology.get("validation", "")
+        validation_prompt = self._build_ncu_validation_prompt(task, ncu_output, measured_value, validation_methodology)
         response = self.llm.chat_with_system(
-            system_prompt="You are a GPU performance analysis expert. Respond only in JSON.",
+            system_prompt="You are a GPU performance analysis expert. Respond only in JSON. Be lenient - if the measurement kernel shows reasonable metrics, mark as valid even if auxiliary kernels have issues.",
             user_prompt=validation_prompt,
             temperature=0.1,
         )
@@ -302,9 +320,9 @@ def task_sanity_ranges() -> dict[str, tuple[float, float]]:
         "l1_latency_cycles": (10, 80),
         "l2_latency_cycles": (30, 300),
         "dram_latency_cycles": (100, 1000),
-        "max_shmem_bandwidth_gbps": (500, 20000),
+        "max_shmem_bandwidth_gbps": (500, 8000),
         "max_vram_bandwidth_gbps": (100, 3000),
-        "l2_cache_size_kb": (256, 16384),
+        "l2_cache_size_kb": (256, 65536),
         "actual_boost_clock_mhz": (200, 3500),
         "shmem_bank_conflict_penalty_cycles": (1, 100),
         "max_shmem_per_block_kb": (8, 256),

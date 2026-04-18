@@ -4,7 +4,7 @@ from core.agent_base import SpecialistAgent, ProbeTask, ProbeResult
 
 class L2CapacityAgent(SpecialistAgent):
     def __init__(self, llm: LLMClient):
-        super().__init__(llm, agent_name="l2_capacity", max_retries=5)
+        super().__init__(llm, agent_name="l2_capacity", max_retries=5, execution_timeout=60)
 
     SYSTEM_PROMPT = """You are an expert CUDA programmer specializing in cache hierarchy characterization.
 Your task is to write micro-benchmarks that determine the L2 cache capacity by finding the latency cliff.
@@ -37,14 +37,24 @@ Design methodology:
 
 Requirements:
 1. Complete, self-contained CUDA C++ program (single .cu file)
-2. Sweep working set sizes: 128KB, 256KB, 512KB, 1MB, 1.5MB, 2MB, 2.5MB, 3MB, 3.5MB, 4MB, 5MB, 6MB, 8MB, 12MB, 16MB
-3. At each size, use pointer chasing with random permutation to measure average access latency
-4. Find the size where latency jumps significantly (the 'cliff')
-5. Use finer steps around the cliff point for more precision
+2. MUST sweep a WIDE range of working set sizes from 128KB to 32MB
+   Use these sizes in KB: 128, 256, 512, 768, 1024, 1536, 2048, 2560, 3072, 3584, 4096, 4608, 5120, 5632, 6144, 7168, 8192, 10240, 12288, 16384, 20480, 32768
+   This is critical - modern GPUs can have L2 caches from 2MB to 40MB!
+3. At each size, use pointer chasing with random permutation to measure average access latency in cycles
+4. MUST use clock64() for timing (NOT clock() which is 32-bit)
+5. Cliff detection algorithm:
+   - Compute latency at each size
+   - Find the size where latency increases by more than 50% compared to the previous size
+   - That size is the L2 cache capacity (the first size that exceeds L2)
 6. Output ONLY the L2 cache size in KB as a single number on the last line
 7. Do NOT use cudaGetDeviceProperties
-8. Use clock64() for timing
-9. The program should automatically detect the cliff and output the result
+8. Pointer chasing MUST use a single thread (threadIdx.x == 0 only)
+9. Each node in the chase should be 128 bytes (one cache line) aligned
+10. Use at least 5000 chase steps per size for accuracy
+11. Keep total runtime under 30 seconds (reduce iterations if needed for large sizes)
+
+IMPORTANT: The cliff detection MUST be done in the C++ code (not printed as a table for manual analysis).
+The program must automatically find the cliff and print ONLY the size in KB.
 
 Output ONLY the CUDA C++ source code."""
 

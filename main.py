@@ -156,55 +156,42 @@ def run(target_spec_path: str = "target_spec.json", output_path: str = "results.
     for target, result in results.items():
         output[target] = result.value
 
+    verdict = analyzer.analyze(results, env_anomalies)
+
+    detailed_evidence = {}
+    for target, result in results.items():
+        entry = {
+            "value": result.value,
+            "confidence": result.confidence,
+            "reasoning": result.reasoning,
+        }
+        if result.evidence:
+            if "code" in result.evidence:
+                entry["code"] = result.evidence["code"]
+            if "output" in result.evidence:
+                entry["execution_output"] = result.evidence["output"]
+            if "ncu_validation" in result.evidence:
+                entry["ncu_validation"] = result.evidence["ncu_validation"]
+            if "attempts" in result.evidence:
+                entry["attempts"] = result.evidence["attempts"]
+        detailed_evidence[target] = entry
+
+    full_output = {
+        "results": output,
+        "evidence_summary": evidence_summary,
+        "detailed_evidence": detailed_evidence,
+        "environment_anomalies": env_anomalies if env_anomalies else None,
+        "cross_validation_notes": verdict.cross_validation_notes if verdict.cross_validation_notes else None,
+        "gpu_info": gpu_info,
+    }
+
     output_file = Path(output_path)
     if not output_file.is_absolute():
         output_file = Path(__file__).resolve().parent / output_path
     with open(output_file, "w") as f:
-        json.dump(output, f, indent=2)
+        json.dump(full_output, f, indent=2)
     logger.info(f"Results written to {output_file}")
     logger.info(f"Final results: {json.dumps(output, indent=2)}")
-
-    evidence_path = output_file.parent / "evidence_log.txt"
-    with open(evidence_path, "w") as f:
-        f.write(evidence_summary)
-        f.write("\n\n=== Analysis & Cross-Validation ===\n")
-        verdict = analyzer.analyze(results, env_anomalies)
-        if verdict.env_anomalies:
-            f.write("== Environment Analysis ==\n")
-            for key, val in verdict.env_anomalies.items():
-                f.write(f"  {key}: {val}\n")
-            f.write("\n")
-        if verdict.cross_validation_notes:
-            f.write("== Cross-Validation Notes ==\n")
-            for note in verdict.cross_validation_notes:
-                f.write(f"  - {note}\n")
-            f.write("\n")
-        if verdict.retries:
-            f.write("== Issues Detected & Retries ==\n")
-            for retry in verdict.retries:
-                f.write(f"  Target: {retry['target']}\n")
-                f.write(f"  Reason: {retry['reason']}\n")
-                f.write("\n")
-        if verdict.all_valid:
-            f.write("== Overall Assessment ==\n")
-            f.write("  All results passed validation.\n")
-        else:
-            f.write("== Overall Assessment ==\n")
-            f.write(f"  {len(verdict.retries)} issues were detected and retried.\n")
-        f.write("\n\n=== Detailed Evidence ===\n")
-        for target, result in results.items():
-            f.write(f"\n--- {target} ---\n")
-            f.write(f"Value: {result.value}\n")
-            f.write(f"Confidence: {result.confidence}\n")
-            f.write(f"Reasoning: {result.reasoning}\n")
-            if result.evidence:
-                if "code" in result.evidence:
-                    f.write(f"\nGenerated Code:\n{result.evidence['code']}\n")
-                if "output" in result.evidence:
-                    f.write(f"\nExecution Output:\n{result.evidence['output']}\n")
-                if "ncu_validation" in result.evidence:
-                    f.write(f"\nNCU Validation:\n{result.evidence['ncu_validation']}\n")
-    logger.info(f"Evidence log written to {evidence_path}")
 
     return output
 
