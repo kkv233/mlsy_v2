@@ -17,11 +17,15 @@ class PlannerAgent:
             if methodology["matched_category"] == "unknown":
                 methodology = self._infer_methodology(target)
             dependencies = self._infer_dependencies(target, targets)
+            context = {}
+            if run_executable:
+                context["run_executable"] = run_executable
+                context["has_reference_program"] = True
             tasks.append(ProbeTask(
                 target=target,
                 methodology=methodology,
                 dependencies=dependencies,
-                context={"run_executable": run_executable} if run_executable else {},
+                context=context,
             ))
         tasks = self._topological_sort(tasks)
         return tasks

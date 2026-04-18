@@ -1,0 +1,1182 @@
+2026-04-18 16:59:51,035 [INFO] Starting GPU Hardware Probing Agent System
+2026-04-18 16:59:51,035 [INFO] Reading target spec from: target_spec_all.json
+2026-04-18 16:59:51,035 [INFO] Targets: ['actual_boost_clock_mhz', 'max_vram_bandwidth_gbps', 'max_shmem_bandwidth_gbps', 'l2_cache_size_kb', 'dram_latency_cycles', 'shmem_bank_conflict_penalty_cycles']
+2026-04-18 16:59:51,093 [INFO] LLM: model=Qwen3-Coder-Plus, base_url=https://llmapi.paratera.com
+2026-04-18 16:59:51,122 [WARNING] Environment anomalies detected: ['gpu_proc_info']
+2026-04-18 16:59:51,149 [INFO] GPU info: {'gpu_name': 'NVIDIA A10', 'memory_total_mb': '23028 MiB', 'max_sm_clock_mhz': '1695 MHz', 'max_mem_clock_mhz': '6251 MHz', 'current_sm_clock_mhz': '0 MHz', 'current_mem_clock_mhz': '405 MHz'}
+2026-04-18 16:59:51,149 [INFO] Phase 1: Planning
+2026-04-18 16:59:51,149 [INFO] Planned 6 tasks in order: ['actual_boost_clock_mhz', 'max_vram_bandwidth_gbps', 'max_shmem_bandwidth_gbps', 'dram_latency_cycles', 'l2_cache_size_kb', 'shmem_bank_conflict_penalty_cycles']
+2026-04-18 16:59:51,149 [INFO] Phase 2: Executing specialist agents
+2026-04-18 16:59:51,149 [INFO] [1/6] Probing: actual_boost_clock_mhz
+2026-04-18 16:59:51,149 [INFO]   [boost_frequency] === Attempt 1/5 ===
+2026-04-18 16:59:51,149 [INFO]   [boost_frequency] Sending code generation request to LLM...
+2026-04-18 16:59:51,149 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:00:06,498 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:00:06,507 [INFO]   [LLM] Response received: 3457 chars, finish_reason=stop
+2026-04-18 17:00:06,507 [INFO]   [boost_frequency] LLM raw response length=3457 chars
+2026-04-18 17:00:06,507 [INFO]   [boost_frequency] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
+__global__ void warmup_kernel(float* data, int n) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < n) {
+        float val = data[idx];
+        for (int i = 0; i < 100000; ++i) {
+            val = val * val + 1.0f;
+        }
+        data[idx] = val;
+    }
+}
+
+__global__ void measurement_kernel(float* data, int n, unsigned long long* start_clock, unsigned long long* end_
+2026-04-18 17:00:06,507 [INFO]   [boost_frequency] Code extracted in 15.4s, length=3446 chars
+2026-04-18 17:00:06,507 [INFO]   [boost_frequency] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
+__global__ void warmup_kernel(float* data, int n) {
+    int idx = blockIdx.x * blockDim.x + threa
+2026-04-18 17:00:06,507 [INFO]   [boost_frequency] Compiling probe_boost_frequency_actual_boost_clock_mhz.cu ...
+2026-04-18 17:00:08,217 [INFO]   [boost_frequency] Compilation OK, binary: /mnt/workspace/probe_boost_frequency_actual_boost_clock_mhz
+2026-04-18 17:00:08,217 [INFO]   [boost_frequency] Executing...
+2026-04-18 17:00:08,359 [INFO]   [boost_frequency] Execution OK, output: 1513
+2026-04-18 17:00:08,359 [INFO]   [boost_frequency] Parsed value: 1513.0
+2026-04-18 17:00:08,359 [INFO]   [boost_frequency] Sanity check PASSED
+2026-04-18 17:00:08,359 [INFO]   [boost_frequency] Compiling for ncu validation...
+2026-04-18 17:00:10,074 [INFO]   [boost_frequency] Running ncu with metrics: ['sm__throughput.avg.pct_of_peak_sustained_elapsed', 'sm__pipe_fma_cycles_active.avg.pct_of_peak_sustained_active']
+2026-04-18 17:00:10,500 [WARNING]   [boost_frequency] ncu unavailable (GPU performance counter permission denied), validation skipped
+2026-04-18 17:00:10,500 [INFO]   [boost_frequency] SUCCESS: actual_boost_clock_mhz = 1513.0 (attempt 1)
+2026-04-18 17:00:10,500 [INFO]   Result: actual_boost_clock_mhz = 1513.0 (confidence=1.0)
+2026-04-18 17:00:10,500 [INFO] [2/6] Probing: max_vram_bandwidth_gbps
+2026-04-18 17:00:10,500 [INFO]   [bandwidth] === Attempt 1/5 ===
+2026-04-18 17:00:10,500 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:00:10,500 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:00:20,433 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:00:20,434 [INFO]   [LLM] Response received: 1904 chars, finish_reason=stop
+2026-04-18 17:00:20,434 [INFO]   [bandwidth] LLM raw response length=1904 chars
+2026-04-18 17:00:20,434 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define DATA_SIZE_MB 256
+#define ELEMENTS_PER_THREAD 32
+
+__global__ void bandwidth_kernel(float* input, float* output, int n) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    
+    for (int i = tid; i < n; i += stride) {
+        float val = input[i];
+        // Perform multiple reads/writes to maximize bandwidth
+        #pragma unroll
+        for (int j = 0; j < ELEMENTS_PER_
+2026-04-18 17:00:20,435 [INFO]   [bandwidth] Code extracted in 9.9s, length=1893 chars
+2026-04-18 17:00:20,435 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define DATA_SIZE_MB 256
+#define ELEMENTS_PER_THREAD 32
+
+__global__ void bandwidth_kernel(float* input, float* output, int n) {
+    int
+2026-04-18 17:00:20,435 [INFO]   [bandwidth] Compiling probe_bandwidth_max_vram_bandwidth_gbps.cu ...
+2026-04-18 17:00:21,714 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_vram_bandwidth_gbps
+2026-04-18 17:00:21,714 [INFO]   [bandwidth] Executing...
+2026-04-18 17:00:21,840 [INFO]   [bandwidth] Execution OK, output: 91.56
+2026-04-18 17:00:21,840 [INFO]   [bandwidth] Parsed value: 91.56
+2026-04-18 17:00:21,840 [WARNING]   [bandwidth] Sanity check FAILED: Value 91.56 is outside sanity range [100, 3000] for max_vram_bandwidth_gbps
+2026-04-18 17:00:21,840 [INFO]   [bandwidth] === Attempt 2/5 ===
+2026-04-18 17:00:21,840 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:00:21,840 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:00:29,729 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:00:29,730 [INFO]   [LLM] Response received: 2725 chars, finish_reason=stop
+2026-04-18 17:00:29,730 [INFO]   [bandwidth] LLM raw response length=2725 chars
+2026-04-18 17:00:29,730 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define DATA_SIZE_MB 256
+#define ELEMENTS_PER_THREAD 32
+
+__global__ void bandwidth_test_kernel(float* input, float* output, size_t n) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    int stride = blockDim.x * gridDim.x;
+    
+    for (size_t i = tid; i < n; i += stride) {
+        float val = input[i];
+        // Perform multiple reads/writes to maximize bandwidth utilization
+        #pragma unroll
+        for (int j
+2026-04-18 17:00:29,730 [INFO]   [bandwidth] Code extracted in 7.9s, length=2714 chars
+2026-04-18 17:00:29,730 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define DATA_SIZE_MB 256
+#define ELEMENTS_PER_THREAD 32
+
+__global__ void bandwidth_test_kernel(float* input, float* output, size_t n) {
+2026-04-18 17:00:29,730 [INFO]   [bandwidth] Compiling probe_bandwidth_max_vram_bandwidth_gbps.cu ...
+2026-04-18 17:00:31,024 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_vram_bandwidth_gbps
+2026-04-18 17:00:31,024 [INFO]   [bandwidth] Executing...
+2026-04-18 17:00:31,525 [INFO]   [bandwidth] Execution OK, output: 195.25
+2026-04-18 17:00:31,526 [INFO]   [bandwidth] Parsed value: 195.25
+2026-04-18 17:00:31,526 [INFO]   [bandwidth] Sanity check PASSED
+2026-04-18 17:00:31,526 [INFO]   [bandwidth] Compiling for ncu validation...
+2026-04-18 17:00:32,829 [INFO]   [bandwidth] Running ncu with metrics: ['dram__throughput.avg.pct_of_peak_sustained_elapsed', 'l1tex__data_pipe_lsu_wavefronts.sum', 'l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum']
+2026-04-18 17:00:33,616 [WARNING]   [bandwidth] ncu unavailable (GPU performance counter permission denied), validation skipped
+2026-04-18 17:00:33,616 [INFO]   [bandwidth] SUCCESS: max_vram_bandwidth_gbps = 195.25 (attempt 2)
+2026-04-18 17:00:33,616 [INFO]   Result: max_vram_bandwidth_gbps = 195.25 (confidence=1.0)
+2026-04-18 17:00:33,616 [INFO] [3/6] Probing: max_shmem_bandwidth_gbps
+2026-04-18 17:00:33,616 [INFO]   [bandwidth] === Attempt 1/5 ===
+2026-04-18 17:00:33,616 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:00:33,616 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:00:44,306 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:00:44,306 [INFO]   [LLM] Response received: 2845 chars, finish_reason=stop
+2026-04-18 17:00:44,307 [INFO]   [bandwidth] LLM raw response length=2845 chars
+2026-04-18 17:00:44,307 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 16
+#define ITERATIONS 100
+
+__global__ void shared_bandwidth_kernel(volatile float* output) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    int gid = bid * blockDim.x + tid;
+    
+    // Initialize shared memory
+    for (int i =
+2026-04-18 17:00:44,307 [INFO]   [bandwidth] Code extracted in 10.7s, length=2834 chars
+2026-04-18 17:00:44,307 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 16
+#define
+2026-04-18 17:00:44,307 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:00:45,545 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:00:45,545 [INFO]   [bandwidth] Executing...
+2026-04-18 17:00:45,615 [INFO]   [bandwidth] Execution OK, output: 237.037
+2026-04-18 17:00:45,615 [INFO]   [bandwidth] Parsed value: 237.037
+2026-04-18 17:00:45,615 [WARNING]   [bandwidth] Sanity check FAILED: Value 237.037 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:00:45,615 [INFO]   [bandwidth] === Attempt 2/5 ===
+2026-04-18 17:00:45,615 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:00:45,615 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:01:00,340 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:01:00,341 [INFO]   [LLM] Response received: 5000 chars, finish_reason=stop
+2026-04-18 17:01:00,341 [INFO]   [bandwidth] LLM raw response length=5000 chars
+2026-04-18 17:01:00,341 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define WARP_SIZE 32
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+
+__global__ void shared_bandwidth_kernel(int *dummy_output) {
+    extern __shared__ float sdata[];
+    
+    const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
+    const int block_size = blockDim.x;
+    
+    // Use clock64 for timing within kernel
+    unsigned int start_cycle = clock();
+    
+    // Perform multiple itera
+2026-04-18 17:01:00,341 [INFO]   [bandwidth] Code extracted in 14.7s, length=4989 chars
+2026-04-18 17:01:00,341 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define WARP_SIZE 32
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+
+__global__ void shared_bandwidth_kern
+2026-04-18 17:01:00,341 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:01:01,658 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:01:01,658 [INFO]   [bandwidth] Executing...
+2026-04-18 17:01:01,727 [INFO]   [bandwidth] Execution OK, output: 140.351
+2026-04-18 17:01:01,727 [INFO]   [bandwidth] Parsed value: 140.351
+2026-04-18 17:01:01,727 [WARNING]   [bandwidth] Sanity check FAILED: Value 140.351 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:01:01,727 [INFO]   [bandwidth] === Attempt 3/5 ===
+2026-04-18 17:01:01,727 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:01:01,728 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:01:11,601 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:01:11,602 [INFO]   [LLM] Response received: 2973 chars, finish_reason=stop
+2026-04-18 17:01:11,602 [INFO]   [bandwidth] LLM raw response length=2973 chars
+2026-04-18 17:01:11,602 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 16
+#define ITERATIONS 100
+
+__global__ void shared_bandwidth_kernel(unsigned int* dummy_output) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    int global_tid = bid * blockDim.x + tid;
+    
+    // Initialize shared memory
+    f
+2026-04-18 17:01:11,602 [INFO]   [bandwidth] Code extracted in 9.9s, length=2962 chars
+2026-04-18 17:01:11,602 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 16
+#define
+2026-04-18 17:01:11,602 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:01:12,873 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:01:12,873 [INFO]   [bandwidth] Executing...
+2026-04-18 17:01:12,947 [INFO]   [bandwidth] Execution OK, output: 60.059
+2026-04-18 17:01:12,947 [INFO]   [bandwidth] Parsed value: 60.059
+2026-04-18 17:01:12,947 [WARNING]   [bandwidth] Sanity check FAILED: Value 60.059 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:01:12,948 [INFO]   [bandwidth] === Attempt 4/5 ===
+2026-04-18 17:01:12,948 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:01:12,948 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:01:22,389 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:01:22,390 [INFO]   [LLM] Response received: 2680 chars, finish_reason=stop
+2026-04-18 17:01:22,390 [INFO]   [bandwidth] LLM raw response length=2680 chars
+2026-04-18 17:01:22,390 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared memory per block)
+
+__global__ void shared_bandwidth_kernel(int *dummy_output, int iterations) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    int global_tid = bid * blockDim.x + tid;
+    
+    // Initialize shared memory
+    for (int i = tid; i < SHARED_MEM_SIZE/sizeof(float); i += blockDim
+2026-04-18 17:01:22,390 [INFO]   [bandwidth] Code extracted in 9.4s, length=2669 chars
+2026-04-18 17:01:22,390 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared memory per block)
+
+__global__ void shared_bandwidth_kernel(int *dummy_outp
+2026-04-18 17:01:22,390 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:01:23,657 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:01:23,657 [INFO]   [bandwidth] Executing...
+2026-04-18 17:01:23,729 [INFO]   [bandwidth] Execution OK, output: 312.5
+2026-04-18 17:01:23,729 [INFO]   [bandwidth] Parsed value: 312.5
+2026-04-18 17:01:23,729 [WARNING]   [bandwidth] Sanity check FAILED: Value 312.5 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:01:23,729 [INFO]   [bandwidth] === Attempt 5/5 ===
+2026-04-18 17:01:23,729 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:01:23,729 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:01:45,608 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:01:45,609 [INFO]   [LLM] Response received: 3595 chars, finish_reason=stop
+2026-04-18 17:01:45,609 [INFO]   [bandwidth] LLM raw response length=3595 chars
+2026-04-18 17:01:45,609 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define WARP_SIZE 32
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+
+__global__ void shmem_bandwidth_kernel(int *dummy_output) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    const int tid = threadIdx.x;
+    const int bid = blockIdx.x;
+    const int block_size = blockDim.x;
+    
+    // Initialize shared memory
+    for (int i = tid; i < SHARED_MEM_SIZE / sizeof(float); i +=
+2026-04-18 17:01:45,609 [INFO]   [bandwidth] Code extracted in 21.9s, length=3584 chars
+2026-04-18 17:01:45,609 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define WARP_SIZE 32
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+
+__global__ void shmem_bandwidth_kerne
+2026-04-18 17:01:45,609 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:01:46,876 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:01:46,876 [INFO]   [bandwidth] Executing...
+2026-04-18 17:01:46,948 [INFO]   [bandwidth] Execution OK, output: 36433.422
+2026-04-18 17:01:46,948 [INFO]   [bandwidth] Parsed value: 36433.422
+2026-04-18 17:01:46,948 [WARNING]   [bandwidth] Sanity check FAILED: Value 36433.422 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:01:46,948 [ERROR]   [bandwidth] FAILED: Could not measure max_shmem_bandwidth_gbps after 5 attempts
+2026-04-18 17:01:46,948 [INFO]   Result: max_shmem_bandwidth_gbps = -1 (confidence=0.0)
+2026-04-18 17:01:46,948 [INFO] [4/6] Probing: dram_latency_cycles
+2026-04-18 17:01:46,948 [INFO]   [memory_latency] === Attempt 1/5 ===
+2026-04-18 17:01:46,948 [INFO]   [memory_latency] Sending code generation request to LLM...
+2026-04-18 17:01:46,948 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:01:59,197 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:01:59,197 [INFO]   [LLM] Response received: 3537 chars, finish_reason=stop
+2026-04-18 17:01:59,198 [INFO]   [memory_latency] LLM raw response length=3537 chars
+2026-04-18 17:01:59,198 [INFO]   [memory_latency] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define WARMUP_ITERATIONS 10
+#define MEASURED_ITERATIONS 100
+#define CHASE_STEPS 10000
+
+// Node size is one cache line (128 bytes)
+struct alignas(128) Node {
+    int next;
+    char padding[124]; // Pad to 128 bytes
+};
+
+__global__ void createRandomPermutation(int* indices, int n) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= n) return;
+
+    // Si
+2026-04-18 17:01:59,198 [INFO]   [memory_latency] Code extracted in 12.2s, length=3526 chars
+2026-04-18 17:01:59,198 [INFO]   [memory_latency] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define WARMUP_ITERATIONS 10
+#define MEASURED_ITERATIONS 100
+#define CHASE_STE
+2026-04-18 17:01:59,198 [INFO]   [memory_latency] Compiling probe_memory_latency_dram_latency_cycles.cu ...
+2026-04-18 17:01:59,953 [INFO]   [memory_latency] Compilation OK, binary: /mnt/workspace/probe_memory_latency_dram_latency_cycles
+2026-04-18 17:01:59,954 [INFO]   [memory_latency] Executing...
+2026-04-18 17:02:00,322 [INFO]   [memory_latency] Execution OK, output: 331.03
+2026-04-18 17:02:00,323 [INFO]   [memory_latency] Parsed value: 331.03
+2026-04-18 17:02:00,323 [INFO]   [memory_latency] Sanity check PASSED
+2026-04-18 17:02:00,323 [INFO]   [memory_latency] Compiling for ncu validation...
+2026-04-18 17:02:01,080 [INFO]   [memory_latency] Running ncu with metrics: ['dram__throughput.avg.pct_of_peak_sustained_elapsed', 'l2__throughput.avg.pct_of_peak_sustained_elapsed', 'l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum']
+2026-04-18 17:02:01,679 [WARNING]   [memory_latency] ncu unavailable (GPU performance counter permission denied), validation skipped
+2026-04-18 17:02:01,679 [INFO]   [memory_latency] SUCCESS: dram_latency_cycles = 331.03 (attempt 1)
+2026-04-18 17:02:01,679 [INFO]   Result: dram_latency_cycles = 331.03 (confidence=1.0)
+2026-04-18 17:02:01,679 [INFO] [5/6] Probing: l2_cache_size_kb
+2026-04-18 17:02:01,679 [INFO]   [l2_capacity] === Attempt 1/5 ===
+2026-04-18 17:02:01,679 [INFO]   [l2_capacity] Sending code generation request to LLM...
+2026-04-18 17:02:01,679 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:02:24,211 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:02:24,212 [INFO]   [LLM] Response received: 6149 chars, finish_reason=stop
+2026-04-18 17:02:24,212 [INFO]   [l2_capacity] LLM raw response length=6149 chars
+2026-04-18 17:02:24,212 [INFO]   [l2_capacity] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+#include <algorithm>
+
+#define WARMUP_ITERATIONS 10
+#define MEASURED_ITERATIONS 50
+#define CHASE_STEPS 5000
+
+// Node size is one cache line (128 bytes)
+struct alignas(128) Node {
+    int next;
+    char padding[124]; // Pad to 128 bytes
+};
+
+__global__ void pointerChase(Node* nodes, int* result, int start_idx, int num_nodes) {
+    int tid = blockIdx.x * b
+2026-04-18 17:02:24,212 [INFO]   [l2_capacity] Code extracted in 22.5s, length=6138 chars
+2026-04-18 17:02:24,212 [INFO]   [l2_capacity] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <device_launch_parameters.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+#include <algorithm>
+
+#define WARMUP_ITERATIONS 10
+#define ME
+2026-04-18 17:02:24,212 [INFO]   [l2_capacity] Compiling probe_l2_capacity_l2_cache_size_kb.cu ...
+2026-04-18 17:02:25,490 [INFO]   [l2_capacity] Compilation OK, binary: /mnt/workspace/probe_l2_capacity_l2_cache_size_kb
+2026-04-18 17:02:25,490 [INFO]   [l2_capacity] Executing...
+2026-04-18 17:02:26,506 [INFO]   [l2_capacity] Execution OK, output: Size: 128 KB, Latency: 327.92 cycles
+Size: 256 KB, Latency: 327.39 cycles
+Size: 512 KB, Latency: 326.94 cycles
+Size: 1024 KB, Latency: 327.16 cycles
+Size: 1536 KB, Latency: 327.08 cycles
+Size: 2048 KB
+2026-04-18 17:02:26,506 [INFO]   [l2_capacity] Parsed value: 2048.0
+2026-04-18 17:02:26,506 [INFO]   [l2_capacity] Sanity check PASSED
+2026-04-18 17:02:26,506 [INFO]   [l2_capacity] Compiling for ncu validation...
+2026-04-18 17:02:27,833 [INFO]   [l2_capacity] Running ncu with metrics: ['l2__throughput.avg.pct_of_peak_sustained_elapsed', 'dram__throughput.avg.pct_of_peak_sustained_elapsed']
+2026-04-18 17:02:29,278 [WARNING]   [l2_capacity] ncu unavailable (GPU performance counter permission denied), validation skipped
+2026-04-18 17:02:29,278 [INFO]   [l2_capacity] SUCCESS: l2_cache_size_kb = 2048.0 (attempt 1)
+2026-04-18 17:02:29,279 [INFO]   Result: l2_cache_size_kb = 2048.0 (confidence=1.0)
+2026-04-18 17:02:29,279 [INFO] [6/6] Probing: shmem_bank_conflict_penalty_cycles
+2026-04-18 17:02:29,279 [INFO]   [resource_penalty] === Attempt 1/5 ===
+2026-04-18 17:02:29,279 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:02:29,279 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:02:41,887 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:02:41,888 [INFO]   [LLM] Response received: 3169 chars, finish_reason=stop
+2026-04-18 17:02:41,888 [INFO]   [resource_penalty] LLM raw response length=3169 chars
+2026-04-18 17:02:41,888 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (NUM_WARPS * WARP_SIZE)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeof(int))
+#define NUM_ITERATIONS 1000
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[TOTAL_THREADS];
+    
+    // Initialize shared memory
+    if (threadIdx.x < TOTAL_THREADS) {
+        smem[threadIdx.x] = threadIdx.x;
+    }
+    __syncthreads();
+    
+    cloc
+2026-04-18 17:02:41,888 [INFO]   [resource_penalty] Code extracted in 12.6s, length=3158 chars
+2026-04-18 17:02:41,889 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (NUM_WARPS * WARP_SIZE)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeof
+2026-04-18 17:02:41,889 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:02:42,143 [WARNING]   [resource_penalty] Compilation FAILED: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu(100): error: argument of type "volatile int *" is incompatible with parameter of type "void *"
+      cudaFree(d_dummy);
+               ^
+
+1 error detected in the compilation of "/mnt/workspace/probe_resource_penalty_shmem_ba
+2026-04-18 17:02:42,143 [INFO]   [resource_penalty] === Attempt 2/5 ===
+2026-04-18 17:02:42,143 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:02:42,143 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:02:50,934 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:02:50,934 [INFO]   [LLM] Response received: 2720 chars, finish_reason=stop
+2026-04-18 17:02:50,934 [INFO]   [resource_penalty] LLM raw response length=2720 chars
+2026-04-18 17:02:50,934 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned long long start_cycle = clock64();
+    
+    // Each thread accesses its own bank (no conflicts)
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+        int tid = threadIdx.x;
+        smem[tid] = tid + iter;
+        __syn
+2026-04-18 17:02:50,935 [INFO]   [resource_penalty] Code extracted in 8.8s, length=2709 chars
+2026-04-18 17:02:50,935 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(volatile int* dumm
+2026-04-18 17:02:50,935 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:02:52,001 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:02:52,001 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:02:52,073 [INFO]   [resource_penalty] Execution OK, output: -0.03
+2026-04-18 17:02:52,073 [INFO]   [resource_penalty] Parsed value: -0.03
+2026-04-18 17:02:52,073 [WARNING]   [resource_penalty] Sanity check FAILED: Value -0.03 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:02:52,073 [INFO]   [resource_penalty] === Attempt 3/5 ===
+2026-04-18 17:02:52,073 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:02:52,073 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:03:04,137 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:03:04,138 [INFO]   [LLM] Response received: 3173 chars, finish_reason=stop
+2026-04-18 17:03:04,138 [INFO]   [resource_penalty] LLM raw response length=3173 chars
+2026-04-18 17:03:04,138 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <algorithm>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (NUM_WARPS * WARP_SIZE)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeof(int))
+#define NUM_ITERATIONS 1000
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[TOTAL_THREADS];
+    
+    unsigned long long start_cycle = clock64();
+    
+    // Each thread accesses its own unique bank (no conflicts)
+    for(int ite
+2026-04-18 17:03:04,138 [INFO]   [resource_penalty] Code extracted in 12.1s, length=3162 chars
+2026-04-18 17:03:04,138 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <algorithm>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (NUM_WARPS * WARP_SIZE)
+#define SHARED_MEM_SIZE (T
+2026-04-18 17:03:04,138 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:03:04,525 [WARNING]   [resource_penalty] Compilation FAILED: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu(71): error: argument of type "volatile int *" is incompatible with parameter of type "const void *"
+          cudaMemcpy(h_dummy, d_dummy, 2 * sizeof(int), cudaMemcpyDeviceToHost);
+                              ^
+
+/mnt/works
+2026-04-18 17:03:04,525 [INFO]   [resource_penalty] === Attempt 4/5 ===
+2026-04-18 17:03:04,525 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:03:04,525 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:03:13,412 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:03:13,413 [INFO]   [LLM] Response received: 2638 chars, finish_reason=stop
+2026-04-18 17:03:13,413 [INFO]   [resource_penalty] LLM raw response length=2638 chars
+2026-04-18 17:03:13,413 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned long long start_cycle, end_cycle;
+    start_cycle = clock64();
+    
+    for (int iter = 0; iter < ITERATIONS; iter++) {
+        // Each thread accesses its own unique bank (no conflicts)
+        smem[threadIdx.x]
+2026-04-18 17:03:13,413 [INFO]   [resource_penalty] Code extracted in 8.9s, length=2627 chars
+2026-04-18 17:03:13,413 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(vo
+2026-04-18 17:03:13,413 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:03:14,479 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:03:14,480 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:03:14,552 [INFO]   [resource_penalty] Execution OK, output: 288230376151711.69
+2026-04-18 17:03:14,552 [INFO]   [resource_penalty] Parsed value: 288230376151711.7
+2026-04-18 17:03:14,552 [WARNING]   [resource_penalty] Sanity check FAILED: Value 288230376151711.7 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:03:14,552 [INFO]   [resource_penalty] === Attempt 5/5 ===
+2026-04-18 17:03:14,553 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:03:14,553 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:03:23,743 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:03:23,744 [INFO]   [LLM] Response received: 2928 chars, finish_reason=stop
+2026-04-18 17:03:23,744 [INFO]   [resource_penalty] LLM raw response length=2928 chars
+2026-04-18 17:03:23,744 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (WARP_SIZE * NUM_WARPS)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeof(int))
+#define NUM_ITERATIONS 1000
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[TOTAL_THREADS];
+    
+    unsigned long long start_cycle = clock64();
+    
+    // Each thread accesses its own bank (no conflicts)
+    for (int iter = 0; iter < NUM_ITERATION
+2026-04-18 17:03:23,744 [INFO]   [resource_penalty] Code extracted in 9.2s, length=2917 chars
+2026-04-18 17:03:23,744 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (WARP_SIZE * NUM_WARPS)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeof
+2026-04-18 17:03:23,744 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:03:24,832 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:03:24,832 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:03:24,902 [INFO]   [resource_penalty] Execution OK, output: 0.00
+2026-04-18 17:03:24,902 [INFO]   [resource_penalty] Parsed value: 0.0
+2026-04-18 17:03:24,902 [WARNING]   [resource_penalty] Sanity check FAILED: Value 0.0 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:03:24,902 [ERROR]   [resource_penalty] FAILED: Could not measure shmem_bank_conflict_penalty_cycles after 5 attempts
+2026-04-18 17:03:24,902 [INFO]   Result: shmem_bank_conflict_penalty_cycles = -1 (confidence=0.0)
+2026-04-18 17:03:24,902 [INFO] Phase 3: Analysis and validation
+2026-04-18 17:03:24,902 [WARNING] Analysis round 1: 2 issues found
+2026-04-18 17:03:24,902 [WARNING]   Retrying max_shmem_bandwidth_gbps: Measurement failed (value=-1)
+2026-04-18 17:03:24,902 [INFO]   [bandwidth] === Attempt 1/5 ===
+2026-04-18 17:03:24,902 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:03:24,902 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:03:37,296 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:03:37,297 [INFO]   [LLM] Response received: 2856 chars, finish_reason=stop
+2026-04-18 17:03:37,297 [INFO]   [bandwidth] LLM raw response length=2856 chars
+2026-04-18 17:03:37,297 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 16
+#define ITERATIONS 1000
+
+__global__ void shared_bandwidth_kernel(unsigned int* result) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    int gid = bid * blockDim.x + tid;
+    
+    unsigned int start_cycle = clock();
+    
+    
+2026-04-18 17:03:37,297 [INFO]   [bandwidth] Code extracted in 12.4s, length=2845 chars
+2026-04-18 17:03:37,297 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 16
+#define
+2026-04-18 17:03:37,297 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:03:38,585 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:03:38,585 [INFO]   [bandwidth] Executing...
+2026-04-18 17:03:38,661 [INFO]   [bandwidth] Execution OK, output: 22260.87
+2026-04-18 17:03:38,661 [INFO]   [bandwidth] Parsed value: 22260.87
+2026-04-18 17:03:38,661 [WARNING]   [bandwidth] Sanity check FAILED: Value 22260.87 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:03:38,661 [INFO]   [bandwidth] === Attempt 2/5 ===
+2026-04-18 17:03:38,661 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:03:38,661 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:03:53,019 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:03:53,020 [INFO]   [LLM] Response received: 3149 chars, finish_reason=stop
+2026-04-18 17:03:53,020 [INFO]   [bandwidth] LLM raw response length=3149 chars
+2026-04-18 17:03:53,020 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+
+__global__ void shared_bandwidth_kernel(int *dummy_output) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    int gid = bid * blockDim.x + tid;
+    
+    // Initialize shared memory
+    for (int i = tid; i < SHARED_MEM_SIZE / sizeof(float); i += blockDim.x) {
+        sdata[i] =
+2026-04-18 17:03:53,020 [INFO]   [bandwidth] Code extracted in 14.4s, length=3138 chars
+2026-04-18 17:03:53,020 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+
+__global__ void shared_bandwidth_kernel(int *dummy_output)
+2026-04-18 17:03:53,020 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:03:54,287 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:03:54,287 [INFO]   [bandwidth] Executing...
+2026-04-18 17:03:54,385 [INFO]   [bandwidth] Execution OK, output: 117.62
+2026-04-18 17:03:54,385 [INFO]   [bandwidth] Parsed value: 117.62
+2026-04-18 17:03:54,385 [WARNING]   [bandwidth] Sanity check FAILED: Value 117.62 is outside sanity range [500, 20000] for max_shmem_bandwidth_gbps
+2026-04-18 17:03:54,385 [INFO]   [bandwidth] === Attempt 3/5 ===
+2026-04-18 17:03:54,385 [INFO]   [bandwidth] Sending code generation request to LLM...
+2026-04-18 17:03:54,385 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:04:02,770 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:04:02,771 [INFO]   [LLM] Response received: 2505 chars, finish_reason=stop
+2026-04-18 17:04:02,771 [INFO]   [bandwidth] LLM raw response length=2505 chars
+2026-04-18 17:04:02,771 [INFO]   [bandwidth] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 64
+#define ITERATIONS 100
+
+__global__ void shared_bandwidth_kernel(volatile float* dummy_output) {
+    __shared__ float sdata[SHARED_MEM_SIZE / sizeof(float)];
+    
+    int tid = threadIdx.x;
+    int bid = blockIdx.x;
+    int gid = bid * blockDim.x + tid;
+    
+    // Initialize shared memory
+    for(in
+2026-04-18 17:04:02,771 [INFO]   [bandwidth] Code extracted in 8.4s, length=2494 chars
+2026-04-18 17:04:02,771 [INFO]   [bandwidth] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <iostream>
+#include <vector>
+
+#define SHARED_MEM_SIZE 49152  // 48KB per block (max shared mem per block)
+#define THREADS_PER_BLOCK 256
+#define NUM_BLOCKS 64
+#define
+2026-04-18 17:04:02,771 [INFO]   [bandwidth] Compiling probe_bandwidth_max_shmem_bandwidth_gbps.cu ...
+2026-04-18 17:04:04,045 [INFO]   [bandwidth] Compilation OK, binary: /mnt/workspace/probe_bandwidth_max_shmem_bandwidth_gbps
+2026-04-18 17:04:04,045 [INFO]   [bandwidth] Executing...
+2026-04-18 17:04:04,125 [INFO]   [bandwidth] Execution OK, output: 2428.46
+2026-04-18 17:04:04,125 [INFO]   [bandwidth] Parsed value: 2428.46
+2026-04-18 17:04:04,125 [INFO]   [bandwidth] Sanity check PASSED
+2026-04-18 17:04:04,125 [INFO]   [bandwidth] Compiling for ncu validation...
+2026-04-18 17:04:05,369 [INFO]   [bandwidth] Running ncu with metrics: ['dram__throughput.avg.pct_of_peak_sustained_elapsed', 'l1tex__data_pipe_lsu_wavefronts.sum', 'l1tex__t_sectors_pipe_lsu_mem_global_op_ld.sum']
+2026-04-18 17:04:05,787 [WARNING]   [bandwidth] ncu unavailable (GPU performance counter permission denied), validation skipped
+2026-04-18 17:04:05,787 [INFO]   [bandwidth] SUCCESS: max_shmem_bandwidth_gbps = 2428.46 (attempt 3)
+2026-04-18 17:04:05,787 [INFO]   Retry result: max_shmem_bandwidth_gbps = 2428.46 (confidence=1.0)
+2026-04-18 17:04:05,788 [WARNING]   Retrying shmem_bank_conflict_penalty_cycles: Measurement failed (value=-1)
+2026-04-18 17:04:05,788 [INFO]   [resource_penalty] === Attempt 1/5 ===
+2026-04-18 17:04:05,788 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:04:05,788 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:04:29,938 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:04:29,938 [INFO]   [LLM] Response received: 8616 chars, finish_reason=length
+2026-04-18 17:04:29,939 [INFO]   [resource_penalty] LLM raw response length=8616 chars
+2026-04-18 17:04:29,939 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <algorithm>
+#include <vector>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define THREADS_PER_BLOCK (WARP_SIZE * NUM_WARPS)
+#define SHARED_MEM_SIZE (THREADS_PER_BLOCK * sizeof(int))
+#define NUM_ITERATIONS 1000
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[THREADS_PER_BLOCK];
+    
+    int tid = threadIdx.x;
+    
+    clock_t start = clock64();
+    
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++)
+2026-04-18 17:04:29,939 [INFO]   [resource_penalty] Code extracted in 24.2s, length=8609 chars
+2026-04-18 17:04:29,939 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <algorithm>
+#include <vector>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define THREADS_PER_BLOCK (WARP_SIZE * NUM_WARPS)
+#define SHARED_MEM_SIZE 
+2026-04-18 17:04:29,939 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:04:30,343 [WARNING]   [resource_penalty] Compilation FAILED: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu(123): error: identifier "uint64_t" is undefined
+      uint64_t *h_start, *h_stop;
+      ^
+
+/mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu(123): error: identifier "h_start" is undefined
+      uint
+2026-04-18 17:04:30,343 [INFO]   [resource_penalty] === Attempt 2/5 ===
+2026-04-18 17:04:30,343 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:04:30,343 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:04:38,434 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:04:38,435 [INFO]   [LLM] Response received: 2600 chars, finish_reason=stop
+2026-04-18 17:04:38,435 [INFO]   [resource_penalty] LLM raw response length=2600 chars
+2026-04-18 17:04:38,435 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE (WARP_SIZE * 4) // Multiple of 32 to allow conflict patterns
+
+__global__ void conflict_free_kernel(unsigned long long* result) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned int tid = threadIdx.x;
+    if (tid >= WARP_SIZE) return;
+    
+    unsigned long long start_time = clock64();
+    
+    for (int iter = 0; iter < NUM_ITERATIONS; iter+
+2026-04-18 17:04:38,435 [INFO]   [resource_penalty] Code extracted in 8.1s, length=2589 chars
+2026-04-18 17:04:38,435 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE (WARP_SIZE * 4) // Multiple of 32 to allow conflict patterns
+
+2026-04-18 17:04:38,435 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:04:39,176 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:04:39,176 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:04:39,265 [INFO]   [resource_penalty] Execution OK, output: 67107.94
+2026-04-18 17:04:39,266 [INFO]   [resource_penalty] Parsed value: 67107.94
+2026-04-18 17:04:39,266 [WARNING]   [resource_penalty] Sanity check FAILED: Value 67107.94 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:04:39,266 [INFO]   [resource_penalty] === Attempt 3/5 ===
+2026-04-18 17:04:39,266 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:04:39,266 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:04:57,211 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:04:57,212 [INFO]   [LLM] Response received: 2441 chars, finish_reason=stop
+2026-04-18 17:04:57,212 [INFO]   [resource_penalty] LLM raw response length=2441 chars
+2026-04-18 17:04:57,212 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(unsigned long long* result) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned int tid = threadIdx.x;
+    unsigned long long start_time, end_time;
+    
+    if (tid == 0) start_time = clock64();
+    
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+        // Conflict-free access: each thread 
+2026-04-18 17:04:57,212 [INFO]   [resource_penalty] Code extracted in 17.9s, length=2430 chars
+2026-04-18 17:04:57,212 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(unsigned long long
+2026-04-18 17:04:57,212 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:04:58,274 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:04:58,274 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:04:58,346 [INFO]   [resource_penalty] Execution OK, output: 9223372036854775808.00
+2026-04-18 17:04:58,346 [INFO]   [resource_penalty] Parsed value: 9.223372036854776e+18
+2026-04-18 17:04:58,346 [WARNING]   [resource_penalty] Sanity check FAILED: Value 9.223372036854776e+18 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:04:58,346 [INFO]   [resource_penalty] === Attempt 4/5 ===
+2026-04-18 17:04:58,346 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:04:58,346 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:05:05,883 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:05:05,884 [INFO]   [LLM] Response received: 2344 chars, finish_reason=stop
+2026-04-18 17:05:05,884 [INFO]   [resource_penalty] LLM raw response length=2344 chars
+2026-04-18 17:05:05,884 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(unsigned long long* result) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned int tid = threadIdx.x;
+    unsigned long long start_time, end_time;
+    
+    if (tid == 0) start_time = clock64();
+    
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+        // Conflict-free access: each thread 
+2026-04-18 17:05:05,884 [INFO]   [resource_penalty] Code extracted in 7.5s, length=2333 chars
+2026-04-18 17:05:05,885 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(unsigned long long
+2026-04-18 17:05:05,885 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:05:06,984 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:06,984 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:05:07,057 [INFO]   [resource_penalty] Execution OK, output: 0.14
+2026-04-18 17:05:07,057 [INFO]   [resource_penalty] Parsed value: 0.14
+2026-04-18 17:05:07,057 [WARNING]   [resource_penalty] Sanity check FAILED: Value 0.14 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:07,057 [INFO]   [resource_penalty] === Attempt 5/5 ===
+2026-04-18 17:05:07,057 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:05:07,057 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:05:18,539 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:05:18,540 [INFO]   [LLM] Response received: 2539 chars, finish_reason=stop
+2026-04-18 17:05:18,540 [INFO]   [resource_penalty] LLM raw response length=2539 chars
+2026-04-18 17:05:18,540 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <algorithm>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 100
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(unsigned long long *result) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned int tid = threadIdx.x;
+    unsigned long long start_time = clock64();
+    
+    // Conflict-free access: each thread accesses its own bank
+    for(int iter = 0; iter < NUM_ITERATIONS; 
+2026-04-18 17:05:18,540 [INFO]   [resource_penalty] Code extracted in 11.5s, length=2528 chars
+2026-04-18 17:05:18,540 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <algorithm>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 100
+#define SHARED_MEM_SIZE 1024
+
+__global__ void c
+2026-04-18 17:05:18,540 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:05:19,716 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:19,716 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:05:19,794 [INFO]   [resource_penalty] Execution OK, output: 0.12
+2026-04-18 17:05:19,794 [INFO]   [resource_penalty] Parsed value: 0.12
+2026-04-18 17:05:19,794 [WARNING]   [resource_penalty] Sanity check FAILED: Value 0.12 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:19,794 [ERROR]   [resource_penalty] FAILED: Could not measure shmem_bank_conflict_penalty_cycles after 5 attempts
+2026-04-18 17:05:19,794 [WARNING] Analysis round 2: 1 issues found
+2026-04-18 17:05:19,794 [WARNING]   Retrying shmem_bank_conflict_penalty_cycles: Measurement failed (value=-1)
+2026-04-18 17:05:19,794 [INFO]   [resource_penalty] === Attempt 1/5 ===
+2026-04-18 17:05:19,794 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:05:19,794 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:05:32,021 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:05:32,022 [INFO]   [LLM] Response received: 2871 chars, finish_reason=stop
+2026-04-18 17:05:32,022 [INFO]   [resource_penalty] LLM raw response length=2871 chars
+2026-04-18 17:05:32,022 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (WARP_SIZE * NUM_WARPS)
+#define SHMEM_SIZE (TOTAL_THREADS * sizeof(int))
+#define NUM_ITERATIONS 1000
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[TOTAL_THREADS];
+    
+    unsigned long long start_cycle = clock64();
+    
+    // Each thread accesses its own bank (no conflicts)
+    for (int iter = 0; iter < NUM_ITERATIONS; it
+2026-04-18 17:05:32,022 [INFO]   [resource_penalty] Code extracted in 12.2s, length=2860 chars
+2026-04-18 17:05:32,022 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 1
+#define TOTAL_THREADS (WARP_SIZE * NUM_WARPS)
+#define SHMEM_SIZE (TOTAL_THREADS * sizeof(int)
+2026-04-18 17:05:32,022 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:05:32,267 [WARNING]   [resource_penalty] Compilation FAILED: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu(86): error: argument of type "volatile int *" is incompatible with parameter of type "void *"
+      cudaFree(d_dummy);
+               ^
+
+1 error detected in the compilation of "/mnt/workspace/probe_resource_penalty_shmem_ban
+2026-04-18 17:05:32,267 [INFO]   [resource_penalty] === Attempt 2/5 ===
+2026-04-18 17:05:32,267 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:05:32,267 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:05:42,668 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:05:42,669 [INFO]   [LLM] Response received: 2526 chars, finish_reason=stop
+2026-04-18 17:05:42,669 [INFO]   [resource_penalty] LLM raw response length=2526 chars
+2026-04-18 17:05:42,669 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[SHARED_MEM_SIZE];
+    
+    unsigned long long start_cycle = clock64();
+    
+    for (int iter = 0; iter < NUM_ITERATIONS; iter++) {
+        // Each thread accesses its own unique bank (no conflicts)
+        int idx = threadIdx.x;
+        smem[idx] = threadIdx.x + 
+2026-04-18 17:05:42,669 [INFO]   [resource_penalty] Code extracted in 10.4s, length=2515 chars
+2026-04-18 17:05:42,669 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_ITERATIONS 1000
+#define SHARED_MEM_SIZE 1024
+
+__global__ void conflict_free_kernel(volatile int* dumm
+2026-04-18 17:05:42,669 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:05:43,800 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:43,800 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:05:43,874 [INFO]   [resource_penalty] Execution OK, output: 0.14
+2026-04-18 17:05:43,874 [INFO]   [resource_penalty] Parsed value: 0.14
+2026-04-18 17:05:43,874 [WARNING]   [resource_penalty] Sanity check FAILED: Value 0.14 is outside sanity range [1, 100] for shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:43,874 [INFO]   [resource_penalty] === Attempt 3/5 ===
+2026-04-18 17:05:43,875 [INFO]   [resource_penalty] Sending code generation request to LLM...
+2026-04-18 17:05:43,875 [INFO]   [LLM] Sending request (attempt 1, model=Qwen3-Coder-Plus, max_tokens=2048)...
+2026-04-18 17:05:54,136 [INFO] HTTP Request: POST https://llmapi.paratera.com/chat/completions "HTTP/1.1 200 OK"
+2026-04-18 17:05:54,137 [INFO]   [LLM] Response received: 3303 chars, finish_reason=stop
+2026-04-18 17:05:54,137 [INFO]   [resource_penalty] LLM raw response length=3303 chars
+2026-04-18 17:05:54,137 [INFO]   [resource_penalty] LLM raw response (first 500 chars): ```cpp
+#include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 16
+#define TOTAL_THREADS (WARP_SIZE * NUM_WARPS)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeof(int))
+#define NUM_ITERATIONS 1000
+
+__global__ void conflict_free_kernel(volatile int* dummy) {
+    __shared__ int smem[TOTAL_THREADS];
+    
+    unsigned long long start_cycle = clock64();
+    
+    // Each thread accesses its own unique bank (no conflicts)
+    for (int iter = 0; iter < NUM_I
+2026-04-18 17:05:54,137 [INFO]   [resource_penalty] Code extracted in 10.3s, length=3292 chars
+2026-04-18 17:05:54,137 [INFO]   [resource_penalty] Code preview (first 200 chars): #include <cuda_runtime.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define WARP_SIZE 32
+#define NUM_WARPS 16
+#define TOTAL_THREADS (WARP_SIZE * NUM_WARPS)
+#define SHARED_MEM_SIZE (TOTAL_THREADS * sizeo
+2026-04-18 17:05:54,137 [INFO]   [resource_penalty] Compiling probe_resource_penalty_shmem_bank_conflict_penalty_cycles.cu ...
+2026-04-18 17:05:54,896 [INFO]   [resource_penalty] Compilation OK, binary: /mnt/workspace/probe_resource_penalty_shmem_bank_conflict_penalty_cycles
+2026-04-18 17:05:54,896 [INFO]   [resource_penalty] Executing...
+2026-04-18 17:05:54,968 [INFO]   [resource_penalty] Execution OK, output: 20.65
+2026-04-18 17:05:54,969 [INFO]   [resource_penalty] Parsed value: 20.65
+2026-04-18 17:05:54,969 [INFO]   [resource_penalty] Sanity check PASSED
+2026-04-18 17:05:54,969 [INFO]   [resource_penalty] Compiling for ncu validation...
+2026-04-18 17:05:55,725 [INFO]   [resource_penalty] Running ncu with metrics: ['l1tex__data_bank_conflicts_pipe_lsu.sum', 'l1tex__data_pipe_lsu_wavefronts.sum']
+2026-04-18 17:05:56,081 [WARNING]   [resource_penalty] ncu unavailable (GPU performance counter permission denied), validation skipped
+2026-04-18 17:05:56,081 [INFO]   [resource_penalty] SUCCESS: shmem_bank_conflict_penalty_cycles = 20.65 (attempt 3)
+2026-04-18 17:05:56,081 [INFO]   Retry result: shmem_bank_conflict_penalty_cycles = 20.65 (confidence=1.0)
+2026-04-18 17:05:56,081 [INFO] 
+=== GPU Hardware Probing Evidence Summary ===
+
+== Environment Anomalies Detected ==
+  gpu_proc_info: Model: 		 NVIDIA A10
+IRQ:   		 10
+GPU UUID: 	 GPU-84ee211d-c523-4dd6-3772-d4c5a112099e
+Video BIOS: 	 94.02.5c.00.04
+Bus Type: 	 PCIe
+DMA Size: 	 47 bits
+DMA Mask: 	 0x7fffffffffff
+Bus Location: 	 0000:00:09.0
+Device Minor: 	 0
+GPU Excluded:	 No
+
+
+== Target: actual_boost_clock_mhz ==
+  Measured value: 1513.0
+  Confidence: 1.0
+  Reasoning: Measured after 1 attempts. ncu validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Code length: 3446 chars
+  NCU validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Attempts: 1
+
+== Target: max_vram_bandwidth_gbps ==
+  Measured value: 195.25
+  Confidence: 1.0
+  Reasoning: Measured after 2 attempts. ncu validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Code length: 2714 chars
+  NCU validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Attempts: 2
+
+== Target: max_shmem_bandwidth_gbps ==
+  Measured value: 2428.46
+  Confidence: 1.0
+  Reasoning: Measured after 3 attempts. ncu validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Code length: 2494 chars
+  NCU validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Attempts: 3
+
+== Target: dram_latency_cycles ==
+  Measured value: 331.03
+  Confidence: 1.0
+  Reasoning: Measured after 1 attempts. ncu validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Code length: 3526 chars
+  NCU validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Attempts: 1
+
+== Target: l2_cache_size_kb ==
+  Measured value: 2048.0
+  Confidence: 1.0
+  Reasoning: Measured after 1 attempts. ncu validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Code length: 6138 chars
+  NCU validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Attempts: 1
+
+== Target: shmem_bank_conflict_penalty_cycles ==
+  Measured value: 20.65
+  Confidence: 1.0
+  Reasoning: Measured after 3 attempts. ncu validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Code length: 3292 chars
+  NCU validation: ncu unavailable (GPU performance counter permission denied), validation skipped
+  Attempts: 3
+
+2026-04-18 17:05:56,082 [INFO] Results written to /root/mlsy_v2/results_all.json
+2026-04-18 17:05:56,082 [INFO] Final results: {
+  "actual_boost_clock_mhz": 1513.0,
+  "max_vram_bandwidth_gbps": 195.25,
+  "max_shmem_bandwidth_gbps": 2428.46,
+  "dram_latency_cycles": 331.03,
+  "l2_cache_size_kb": 2048.0,
+  "shmem_bank_conflict_penalty_cycles": 20.65
+}
+2026-04-18 17:05:56,082 [INFO] Evidence log written to /root/mlsy_v2/evidence_log.txt

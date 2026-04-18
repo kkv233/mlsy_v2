@@ -6,7 +6,8 @@ import re
 from pathlib import Path
 
 
-WORKSPACE = Path(os.environ.get("WORKSPACE_DIR", "/root/autodl-tmp/mlsy_v2/workspace"))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+WORKSPACE = Path(os.environ.get("WORKSPACE_DIR", str(PROJECT_ROOT / "workspace")))
 
 
 def _run_command(cmd: str, cwd: str = None, timeout: int = 120) -> tuple[bool, str, str]:
@@ -31,7 +32,7 @@ def compile_cuda(source_code: str, output_name: str, extra_flags: str = "") -> t
     src_path = WORKSPACE / f"{output_name}.cu"
     bin_path = WORKSPACE / output_name
     src_path.write_text(source_code)
-    cmd = f"nvcc -o {bin_path} {src_path} -arch=sm_89 {extra_flags} 2>&1"
+    cmd = f"nvcc -o {bin_path} {src_path} -arch=sm_86 {extra_flags} 2>&1"
     ok, stdout, stderr = _run_command(cmd)
     combined = stdout + stderr
     if not ok:
@@ -47,7 +48,7 @@ def execute_binary(binary_path: str, args: str = "", timeout: int = 60) -> tuple
 
 def run_ncu(binary_path: str, metrics: list[str], args: str = "", timeout: int = 120) -> tuple[bool, str, str]:
     metrics_str = ",".join(metrics)
-    cmd = f"ncu --metrics {metrics_str} {binary_path} {args} 2>&1"
+    cmd = f"ncu --target-processes all --metrics {metrics_str} {binary_path} {args} 2>&1"
     ok, stdout, stderr = _run_command(cmd, timeout=timeout)
     combined = stdout + stderr
     return ok, combined, ""

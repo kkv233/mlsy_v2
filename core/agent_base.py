@@ -45,6 +45,8 @@ class SpecialistAgent:
         deps_context = ""
         if task.context:
             deps_context = f"\nKnown values: {json.dumps(task.context, indent=2)}\n"
+            if task.context.get("has_reference_program"):
+                deps_context += "\nNOTE: A reference executable is provided. You can run it to get reference values for cross-validation.\n"
         feedback = ""
         if self.feedback_history:
             feedback = f"\nPrevious attempt failed: {'; '.join(self.feedback_history[-2:])}\nFix the issue.\n"
@@ -55,14 +57,23 @@ Principle: {principle}
 Approach: {approach}
 Key challenges: {challenges_str}
 {deps_context}{feedback}
-Rules:
-- Complete self-contained .cu file, compiles with nvcc -arch=sm_89
-- Output ONLY the measured number on the LAST line of stdout
-- Use clock64() for cycle timing, CUDA events for wall-clock timing
-- Include warm-up and multiple iterations
-- Do NOT use cudaGetDeviceProperties
-- Keep total runtime under 10 seconds (use moderate iteration counts)
-- No explanations, output ONLY the CUDA C++ source code"""
+CRITICAL REQUIREMENTS - YOUR CODE MUST COMPILE AND RUN ON FIRST TRY:
+1. MUST be a COMPLETE, self-contained .cu file with #include <stdio.h>, #include <cuda_runtime.h>, kernel function, AND main() function
+2. MUST compile successfully with: nvcc -o <binary> <source>.cu -arch=sm_86
+3. MUST output ONLY the measured number (a single float) on the LAST line of stdout - no other text after it
+4. MUST use clock64() for cycle-level timing, CUDA events for wall-clock timing
+5. MUST include warm-up runs and multiple iterations for accuracy
+6. MUST NOT use cudaGetDeviceProperties to query the answer
+7. MUST keep total runtime under 10 seconds
+8. MUST handle CUDA errors gracefully
+9. Output ONLY the complete CUDA C++ source code - no explanations, no markdown formatting
+
+IMPORTANT: Double-check your code before outputting. Ensure:
+- All functions are properly defined and called
+- main() function exists and calls the kernel correctly
+- Memory allocation/deallocation is correct
+- The final printf outputs ONLY the numeric result
+- No syntax errors, missing semicolons, or undefined variables"""
 
     def _build_ncu_validation_prompt(self, task: ProbeTask, ncu_output: str, measured_value: float) -> str:
         return f"""You are a GPU performance analysis expert. Analyze the ncu profiling output to verify whether the measured value is reliable.
@@ -170,8 +181,12 @@ Respond in JSON format:
         logger.info(f"  [{self.agent_name}] Running ncu with metrics: {ncu_metrics}")
         ok, ncu_output, _ = tools.run_ncu(binary_path, ncu_metrics, timeout=120)
         if not ok:
+            if "ERR_NVGPUCTRPERM" in ncu_output:
+                msg = "ncu unavailable (GPU performance counter permission denied), validation skipped"
+                logger.warning(f"  [{self.agent_name}] {msg}")
+                return True, msg
             logger.warning(f"  [{self.agent_name}] ncu run failed: {ncu_output[:200]}")
-            return True, f"ncu run failed: {ncu_output}, skipping validation"
+            return True, f"ncu run failed, skipping validation: {ncu_output[:200]}"
         logger.info(f"  [{self.agent_name}] ncu output: {ncu_output[:300]}")
         logger.info(f"  [{self.agent_name}] Sending ncu output to LLM for validation analysis...")
         validation_prompt = self._build_ncu_validation_prompt(task, ncu_output, measured_value)

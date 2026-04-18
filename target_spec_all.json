@@ -1,0 +1,11 @@
+{
+  "targets": [
+    "actual_boost_clock_mhz",
+    "max_vram_bandwidth_gbps",
+    "max_shmem_bandwidth_gbps",
+    "l2_cache_size_kb",
+    "dram_latency_cycles",
+    "shmem_bank_conflict_penalty_cycles"
+  ],
+  "run": null
+}

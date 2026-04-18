@@ -57,8 +57,10 @@ def run(target_spec_path: str = "target_spec.json", output_path: str = "results.
     logger.info(f"Reading target spec from: {target_spec_path}")
 
     spec_path = Path(target_spec_path)
+    if not spec_path.is_absolute():
+        spec_path = Path(__file__).resolve().parent / target_spec_path
     if not spec_path.exists():
-        logger.error(f"target_spec.json not found at {target_spec_path}")
+        logger.error(f"target_spec.json not found at {spec_path}")
         sys.exit(1)
 
     with open(spec_path) as f:
@@ -82,6 +84,23 @@ def run(target_spec_path: str = "target_spec.json", output_path: str = "results.
     gpu_info = tools.get_gpu_info()
     logger.info(f"GPU info: {gpu_info}")
 
+    if run_executable:
+        logger.info(f"Phase 0: Running provided executable: {run_executable}")
+        ok, stdout, stderr = tools.execute_binary(run_executable, timeout=120)
+        if ok:
+            logger.info(f"Executable output: {stdout.strip()[:500]}")
+            try:
+                reference_values = json.loads(stdout.strip())
+                logger.info(f"Parsed reference values: {reference_values}")
+            except json.JSONDecodeError:
+                logger.warning("Executable output is not valid JSON, treating as reference data")
+                reference_values = {"raw_output": stdout.strip()}
+        else:
+            logger.warning(f"Executable failed: {stderr[:300]}")
+            reference_values = {"error": stderr[:500]}
+    else:
+        reference_values = {}
+
     logger.info("Phase 1: Planning")
     planner = PlannerAgent(llm)
     tasks = planner.plan(target_spec)
@@ -97,6 +116,8 @@ def run(target_spec_path: str = "target_spec.json", output_path: str = "results.
         })
         task.context["gpu_info"] = gpu_info
         task.context["env_anomalies"] = env_anomalies
+        if reference_values:
+            task.context["reference_values"] = reference_values
 
         specialist = select_specialist(task, llm)
         result = specialist.probe(task)
@@ -135,12 +156,15 @@ def run(target_spec_path: str = "target_spec.json", output_path: str = "results.
     for target, result in results.items():
         output[target] = result.value
 
-    with open(output_path, "w") as f:
+    output_file = Path(output_path)
+    if not output_file.is_absolute():
+        output_file = Path(__file__).resolve().parent / output_path
+    with open(output_file, "w") as f:
         json.dump(output, f, indent=2)
-    logger.info(f"Results written to {output_path}")
+    logger.info(f"Results written to {output_file}")
     logger.info(f"Final results: {json.dumps(output, indent=2)}")
 
-    evidence_path = Path(output_path).parent / "evidence_log.txt"
+    evidence_path = output_file.parent / "evidence_log.txt"
     with open(evidence_path, "w") as f:
         f.write(evidence_summary)
         f.write("\n\n=== Analysis & Cross-Validation ===\n")

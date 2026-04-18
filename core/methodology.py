@@ -19,10 +19,12 @@ METHODOLOGY_KB = {
             "1. Allocate arrays of different sizes: small (e.g., 4KB for L1), medium (e.g., 2MB for L2), large (e.g., 64MB for DRAM). "
             "2. Initialize each array as a linked list with nodes in random order (shuffle the next pointers). "
             "3. Each node should be exactly one cache line (128 bytes) to avoid prefetching adjacent lines. "
-            "4. The kernel reads node->next, then accesses nodes[node->next], creating a true data dependency chain. "
-            "5. Use clock64() to measure total cycles, divide by number of chase steps. "
-            "6. Run multiple iterations and report the median. "
-            "7. For DRAM measurement, ensure the array is much larger than L2 cache size."
+            "4. CRITICAL: Use volatile pointer or write final result to global memory to prevent compiler from optimizing away the loop. "
+            "   Example: 'volatile int* volatile_ptr = nodes; int idx = start; for(...) { idx = volatile_ptr[idx]; } global_result[0] = idx;' "
+            "5. The kernel reads node->next, then accesses nodes[node->next], creating a true data dependency chain. "
+            "6. Use clock64() to measure total cycles, divide by number of chase steps. "
+            "7. Run multiple iterations and report the median. "
+            "8. For DRAM measurement, ensure the array is much larger than L2 cache size (e.g., 64MB+ for A10 with 4MB L2)."
         ),
         "ncu_metrics": [
             "dram__throughput.avg.pct_of_peak_sustained_elapsed",

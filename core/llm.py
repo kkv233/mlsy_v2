@@ -15,10 +15,23 @@ class LLMClient:
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.max_retries = 3
         self.retry_delay = 10
+        self.request_interval = 5  # seconds between requests to avoid rate limiting
+        self.last_request_time = 0
+
+    def _wait_for_rate_limit(self):
+        """Ensure minimum interval between requests to avoid rate limiting."""
+        now = time.time()
+        elapsed = now - self.last_request_time
+        if elapsed < self.request_interval:
+            wait_time = self.request_interval - elapsed
+            logger.info(f"  [LLM] Rate limit protection: waiting {wait_time:.1f}s...")
+            time.sleep(wait_time)
+        self.last_request_time = time.time()
 
     def chat(self, messages, temperature=0.3, max_tokens=4096, timeout=300) -> str:
         for attempt in range(self.max_retries):
             try:
+                self._wait_for_rate_limit()
                 logger.info(f"  [LLM] Sending request (attempt {attempt+1}, model={self.model}, max_tokens={max_tokens})...")
                 response = self.client.chat.completions.create(
                     model=self.model,
