@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 class LLMClient:
     def __init__(self):
-        self.api_key = os.environ["API_KEY"]
-        self.base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-        self.model = os.environ.get("API_MODEL", "gpt-4o")
+        self.api_key = os.environ.get("API_KEY", "")
+        self.base_url = os.environ.get("BASE_URL", os.environ.get("API_BASE_URL", "https://api.openai.com/v1"))
+        self.model = os.environ.get("BASE_MODEL", os.environ.get("API_MODEL", "gpt-4o"))
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.max_retries = 3
         self.retry_delay = 10
