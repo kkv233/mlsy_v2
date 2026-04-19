@@ -1,8 +1,0 @@
-{
-  "actual_boost_clock_mhz": 1308.37,
-  "max_vram_bandwidth_gbps": 495.59,
-  "max_shmem_bandwidth_gbps": 2447.809,
-  "dram_latency_cycles": 328.83,
-  "l2_cache_size_kb": 256.0,
-  "shmem_bank_conflict_penalty_cycles": 1.61
-}
