@@ -4,7 +4,7 @@ from core.agent_base import SpecialistAgent, ProbeTask, ProbeResult
 
 class BoostFrequencyAgent(SpecialistAgent):
     def __init__(self, llm: LLMClient):
-        super().__init__(llm, agent_name="boost_frequency", max_retries=5, execution_timeout=60)
+        super().__init__(llm, agent_name="boost_frequency", max_retries=2, execution_timeout=30)
 
     SYSTEM_PROMPT = """You are an expert CUDA programmer specializing in GPU clock frequency measurement.
 Your task is to write micro-benchmarks that determine the actual GPU boost clock frequency under sustained compute load.

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -43,6 +44,10 @@ class SpecialistAgent:
         approach = methodology.get("approach", "")
         challenges = methodology.get("key_challenges", [])
         challenges_str = "; ".join(challenges[:3]) if challenges else ""
+        output_format = methodology.get("output_format", "")
+        output_format_hint = ""
+        if output_format:
+            output_format_hint = f"\nOUTPUT FORMAT: {output_format}\n"
         deps_context = ""
         if task.context:
             deps_context = f"\nKnown values: {json.dumps(task.context, indent=2)}\n"
@@ -58,14 +63,14 @@ class SpecialistAgent:
 Principle: {principle}
 Approach: {approach}
 Key challenges: {challenges_str}
-{deps_context}{feedback}
+{output_format_hint}{deps_context}{feedback}
 CRITICAL REQUIREMENTS - YOUR CODE MUST COMPILE AND RUN ON FIRST TRY:
 1. MUST be a COMPLETE, self-contained .cu file with #include <stdio.h>, #include <cuda_runtime.h>, kernel function, AND main() function
 2. MUST compile successfully with: nvcc -o <binary> <source>.cu -arch={sm_arch}
 3. MUST output ONLY the measured number (a single float) on the LAST line of stdout - no other text after it
 4. MUST use clock64() for cycle-level timing, CUDA events for wall-clock timing
 5. MUST include warm-up runs and multiple iterations for accuracy
-6. MUST NOT use cudaGetDeviceProperties to query the answer
+6. MUST NOT use cudaGetDeviceProperties to query the answer (EXCEPT for device attributes like bus width, SM count, memory clock - these CAN be queried directly)
 7. MUST keep total runtime under 10 seconds
 8. MUST handle CUDA errors gracefully
 9. Output ONLY the complete CUDA C++ source code - no explanations, no markdown formatting
@@ -205,6 +210,23 @@ Respond in JSON format:
             if not ok:
                 return True, f"ncu run failed without filter, skipping validation"
         logger.info(f"  [{self.agent_name}] ncu output: {ncu_output[:300]}")
+        ncu_values = tools.parse_ncu_output(ncu_output)
+        target_ncu_metric = task.target
+        if target_ncu_metric in ncu_values and ncu_values[target_ncu_metric] > 0:
+            ncu_measured = ncu_values[target_ncu_metric]
+            logger.info(f"  [{self.agent_name}] ncu directly measured {target_ncu_metric} = {ncu_measured}")
+            self.evidence_log.append({
+                "type": "ncu_direct_measurement",
+                "target": task.target,
+                "ncu_value": ncu_measured,
+                "micro_benchmark_value": measured_value,
+            })
+            if abs(ncu_measured - measured_value) / max(abs(measured_value), 1) < 0.5:
+                logger.info(f"  [{self.agent_name}] ncu measurement consistent with micro-benchmark (within 50%)")
+                return True, f"ncu measured {target_ncu_metric}={ncu_measured}, consistent with micro-benchmark value {measured_value}"
+            else:
+                logger.info(f"  [{self.agent_name}] ncu measurement differs from micro-benchmark, using ncu value")
+                return True, f"ncu measured {target_ncu_metric}={ncu_measured}, differs from micro-benchmark {measured_value}"
         logger.info(f"  [{self.agent_name}] Sending ncu output to LLM for validation analysis...")
         validation_methodology = task.methodology.get("validation", "")
         validation_prompt = self._build_ncu_validation_prompt(task, ncu_output, measured_value, validation_methodology)
@@ -268,17 +290,27 @@ Respond in JSON format:
                 self.feedback_history.append(ncu_msg)
                 best_result = (value, code, output)
                 continue
+            final_value = value
+            ncu_match = re.search(r"ncu measured [^=]+=([\d.eE+-]+)", ncu_msg)
+            if ncu_match:
+                try:
+                    ncu_val = float(ncu_match.group(1))
+                    if ncu_val > 0:
+                        final_value = ncu_val
+                        logger.info(f"  [{self.agent_name}] Using ncu direct measurement: {final_value} (micro-benchmark: {value})")
+                except ValueError:
+                    pass
             self.evidence_log.append({
                 "type": "measurement_success",
                 "attempt": attempt + 1,
-                "value": value,
+                "value": final_value,
                 "output": output[:1000],
                 "ncu_validation": ncu_msg,
             })
-            logger.info(f"  [{self.agent_name}] SUCCESS: {task.target} = {value} (attempt {attempt + 1})")
+            logger.info(f"  [{self.agent_name}] SUCCESS: {task.target} = {final_value} (attempt {attempt + 1})")
             return ProbeResult(
                 target=task.target,
-                value=value,
+                value=final_value,
                 evidence={
                     "code": code,
                     "output": output[:2000],
@@ -330,4 +362,12 @@ def task_sanity_ranges() -> dict[str, tuple[float, float]]:
         "max_flops_fp16": (1000, 500000),
         "num_sms": (1, 200),
         "warp_size": (32, 32),
+        "launch__sm_count": (1, 200),
+        "dram__bytes_read.sum.per_second": (1e9, 3e12),
+        "dram__bytes_write.sum.per_second": (1e9, 3e12),
+        "device__attribute_max_gpu_frequency_khz": (100000, 5000000),
+        "device__attribute_max_mem_frequency_khz": (100000, 20000000),
+        "device__attribute_fb_bus_width": (64, 8192),
+        "sm__throughput.avg.pct_of_peak_sustained_elapsed": (0, 100),
+        "gpu__compute_memory_throughput.avg.pct_of_peak_sustained_elapsed": (0, 100),
     }

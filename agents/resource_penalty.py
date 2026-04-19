@@ -4,7 +4,7 @@ from core.agent_base import SpecialistAgent, ProbeTask, ProbeResult
 
 class ResourcePenaltyAgent(SpecialistAgent):
     def __init__(self, llm: LLMClient):
-        super().__init__(llm, agent_name="resource_penalty", max_retries=8)
+        super().__init__(llm, agent_name="resource_penalty", max_retries=2)
 
     SYSTEM_PROMPT = """You are an expert CUDA programmer specializing in Shared Memory bank conflict characterization.
 Your task is to write micro-benchmarks that measure the latency penalty caused by bank conflicts in Shared Memory.

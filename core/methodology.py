@@ -203,10 +203,104 @@ METHODOLOGY_KB = {
 }
 
 
+NCU_METRIC_KB = {
+    "launch__sm_count": {
+        "matched_category": "frequency",
+        "description": "Number of SMs (Streaming Multiprocessors) on the GPU",
+        "unit": "count (integer)",
+        "principle": "Count the number of SMs by launching a kernel that uses all available SMs and measuring how many blocks can run concurrently. Each SM can run a limited number of blocks; by observing the concurrency pattern, we can deduce the SM count.",
+        "approach": "1. Launch a kernel where each block records its block ID and a timestamp using clock64(). 2. Use enough blocks to fill all SMs. 3. Blocks that start at the same time are running on different SMs. 4. Count the number of blocks that start within the same small time window - that's the SM count. 5. Alternatively, use cudaGetDeviceProperties to get the SM count directly (this is an attribute, not a secret).",
+        "key_challenges": ["Must distinguish between concurrent and sequential block execution", "Need precise timing to identify concurrent blocks"],
+        "ncu_metrics": ["launch__sm_count"],
+        "validation": "Compare measured SM count with cudaGetDeviceProperties result.",
+        "output_format": "Output the integer SM count (e.g., 82 for A10)",
+    },
+    "dram__bytes_read.sum.per_second": {
+        "matched_category": "bandwidth",
+        "description": "DRAM read bandwidth in bytes per second",
+        "unit": "bytes/second (e.g., 889928555010.706 for ~890 GB/s)",
+        "principle": "Measure the maximum DRAM read throughput by performing large, coalesced read operations from global memory. The result should be in bytes per second (NOT GB/s).",
+        "approach": "1. Allocate a large array (>=256MB) in global memory. 2. Launch many thread blocks with coalesced read access. 3. Use CUDA events for timing. 4. bytes_per_second = total_bytes_read / elapsed_seconds. 5. Output the raw bytes/second value (e.g., 889928555010.706).",
+        "key_challenges": ["Must output in bytes/second, NOT GB/s", "Must saturate DRAM bandwidth with enough threads and data"],
+        "ncu_metrics": ["dram__bytes_read.sum.per_second"],
+        "validation": "Compare with ncu dram__bytes_read.sum.per_second metric.",
+        "output_format": "Output the value in bytes/second as a large number (e.g., 889928555010.706)",
+    },
+    "dram__bytes_write.sum.per_second": {
+        "matched_category": "bandwidth",
+        "description": "DRAM write bandwidth in bytes per second",
+        "unit": "bytes/second (e.g., 863088076676.897 for ~863 GB/s)",
+        "principle": "Measure the maximum DRAM write throughput by performing large, coalesced write operations to global memory. The result should be in bytes per second (NOT GB/s).",
+        "approach": "1. Allocate a large array (>=256MB) in global memory. 2. Launch many thread blocks with coalesced write access. 3. Use CUDA events for timing. 4. bytes_per_second = total_bytes_written / elapsed_seconds. 5. Output the raw bytes/second value (e.g., 863088076676.897).",
+        "key_challenges": ["Must output in bytes/second, NOT GB/s", "Must saturate DRAM bandwidth with enough threads and data"],
+        "ncu_metrics": ["dram__bytes_write.sum.per_second"],
+        "validation": "Compare with ncu dram__bytes_write.sum.per_second metric.",
+        "output_format": "Output the value in bytes/second as a large number (e.g., 863088076676.897)",
+    },
+    "device__attribute_max_gpu_frequency_khz": {
+        "matched_category": "frequency",
+        "description": "Maximum GPU SM clock frequency in kHz",
+        "unit": "kHz (e.g., 1695000 for 1695 MHz)",
+        "principle": "Measure the actual maximum GPU SM clock frequency under sustained compute load. The result must be in kHz (NOT MHz). 1 MHz = 1000 kHz.",
+        "approach": "1. Use clock64() vs CUDA events method to measure actual frequency in MHz. 2. Multiply by 1000 to convert to kHz. 3. Output the kHz value (e.g., 1695000).",
+        "key_challenges": ["Must output in kHz, NOT MHz", "GPU may throttle under load", "Must ensure sustained load to reach max frequency"],
+        "ncu_metrics": ["gpu__clocks.max"],
+        "validation": "Compare measured frequency with ncu gpu__clocks.max.",
+        "output_format": "Output the frequency in kHz (e.g., 1695000, NOT 1695)",
+    },
+    "device__attribute_max_mem_frequency_khz": {
+        "matched_category": "frequency",
+        "description": "Maximum GPU memory clock frequency in kHz",
+        "unit": "kHz (e.g., 9751000 for 9751 MHz)",
+        "principle": "Measure the maximum memory clock frequency. The result must be in kHz (NOT MHz). This can be derived from measured VRAM bandwidth and bus width: mem_freq_khz = (measured_bandwidth_bytes_per_sec * 8) / (bus_width * 2). Or use cudaGetDeviceProperties to get the memory clock rate.",
+        "approach": "1. Use cudaGetDeviceProperties to get memory clock rate in kHz. 2. This is an attribute that can be queried directly. 3. Output in kHz.",
+        "key_challenges": ["Must output in kHz, NOT MHz", "Memory clock is typically much higher than SM clock"],
+        "ncu_metrics": ["gpu__clocks.max"],
+        "validation": "Compare with ncu reported memory frequency.",
+        "output_format": "Output the frequency in kHz (e.g., 9751000, NOT 9751)",
+    },
+    "device__attribute_fb_bus_width": {
+        "matched_category": "bandwidth",
+        "description": "Frame buffer (VRAM) bus width in bits",
+        "unit": "bits (integer, e.g., 384)",
+        "principle": "The frame buffer bus width is a hardware attribute that determines how many bits can be transferred per memory clock cycle. It can be queried using cudaGetDeviceProperties.",
+        "approach": "1. Use cudaGetDeviceProperties to get the memoryBusWidth attribute. 2. This is a device attribute that can be directly queried. 3. Output the integer bus width in bits.",
+        "key_challenges": ["Must output in bits (integer), NOT bytes", "This is a static attribute, not a measured value"],
+        "ncu_metrics": [],
+        "validation": "Compare with known bus widths for the GPU model.",
+        "output_format": "Output the integer bus width in bits (e.g., 384)",
+    },
+    "sm__throughput.avg.pct_of_peak_sustained_elapsed": {
+        "matched_category": "frequency",
+        "description": "SM throughput as a percentage of peak sustained throughput during the elapsed time",
+        "unit": "percentage (e.g., 98.07)",
+        "principle": "Measure the SM utilization percentage under a compute-intensive workload. This represents how close the workload gets to peak SM throughput.",
+        "approach": "1. Run a compute-intensive kernel (heavy FMA operations) that maximally utilizes all SMs. 2. Use ncu to measure sm__throughput.avg.pct_of_peak_sustained_elapsed. 3. Or estimate from measured FLOPS vs theoretical peak FLOPS. 4. Output as a percentage (0-100).",
+        "key_challenges": ["Must output as percentage (0-100), NOT as a ratio (0-1)", "Must run a workload that actually achieves high SM utilization"],
+        "ncu_metrics": ["sm__throughput.avg.pct_of_peak_sustained_elapsed"],
+        "validation": "Compare with ncu measured value.",
+        "output_format": "Output as a percentage (e.g., 98.07, NOT 0.9807)",
+    },
+    "gpu__compute_memory_throughput.avg.pct_of_peak_sustained_elapsed": {
+        "matched_category": "bandwidth",
+        "description": "Compute memory throughput as a percentage of peak sustained throughput during elapsed time",
+        "unit": "percentage (e.g., 90.8575)",
+        "principle": "Measure the compute-memory throughput percentage under a memory-intensive workload. This represents how close the workload gets to peak memory throughput.",
+        "approach": "1. Run a memory-intensive kernel (large coalesced reads/writes) that maximally utilizes memory bandwidth. 2. Use ncu to measure gpu__compute_memory_throughput.avg.pct_of_peak_sustained_elapsed. 3. Or estimate from measured bandwidth vs theoretical peak bandwidth. 4. Output as a percentage (0-100).",
+        "key_challenges": ["Must output as percentage (0-100), NOT as a ratio (0-1)", "Must run a workload that actually achieves high memory utilization"],
+        "ncu_metrics": ["gpu__compute_memory_throughput.avg.pct_of_peak_sustained_elapsed"],
+        "validation": "Compare with ncu measured value.",
+        "output_format": "Output as a percentage (e.g., 90.8575, NOT 0.908575)",
+    },
+}
+
+
 PRIORITY_ORDER = ["penalty", "l2_capacity", "bandwidth", "frequency", "latency"]
 
 
 def match_methodology(target_name: str) -> dict:
+    if target_name in NCU_METRIC_KB:
+        return {**NCU_METRIC_KB[target_name], "matched_category": NCU_METRIC_KB[target_name]["matched_category"]}
     target_lower = target_name.lower()
     for category in PRIORITY_ORDER:
         info = METHODOLOGY_KB[category]

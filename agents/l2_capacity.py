@@ -4,7 +4,7 @@ from core.agent_base import SpecialistAgent, ProbeTask, ProbeResult
 
 class L2CapacityAgent(SpecialistAgent):
     def __init__(self, llm: LLMClient):
-        super().__init__(llm, agent_name="l2_capacity", max_retries=5, execution_timeout=60)
+        super().__init__(llm, agent_name="l2_capacity", max_retries=2, execution_timeout=30)
 
     SYSTEM_PROMPT = """You are an expert CUDA programmer specializing in cache hierarchy characterization.
 Your task is to write micro-benchmarks that determine the L2 cache capacity by finding the latency cliff.

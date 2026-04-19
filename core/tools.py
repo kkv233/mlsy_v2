@@ -58,10 +58,19 @@ def compile_cuda(source_code: str, output_name: str, extra_flags: str = "") -> t
     bin_path = WORKSPACE / output_name
     src_path.write_text(source_code)
     sm_arch = detect_sm_arch()
-    cmd = f"nvcc -o {bin_path} {src_path} -arch={sm_arch} {extra_flags} 2>&1"
+    needs_cuda_lib = "cuInit" in source_code or "cuDeviceGet" in source_code or "CUdevice" in source_code or "CUresult" in source_code or "#include <cuda.h>" in source_code
+    link_flag = "-lcuda" if needs_cuda_lib else ""
+    cmd = f"nvcc -o {bin_path} {src_path} -arch={sm_arch} {link_flag} {extra_flags} 2>&1"
     ok, stdout, stderr = _run_command(cmd)
     combined = stdout + stderr
     if not ok:
+        if needs_cuda_lib and "undefined reference" in combined:
+            cmd2 = f"nvcc -o {bin_path} {src_path} -arch={sm_arch} -lcuda {extra_flags} 2>&1"
+            ok2, stdout2, stderr2 = _run_command(cmd2)
+            combined2 = stdout2 + stderr2
+            if ok2:
+                return True, str(bin_path), ""
+            return False, combined2, ""
         return False, combined, ""
     return True, str(bin_path), ""
 
@@ -77,7 +86,7 @@ def run_ncu(binary_path: str, metrics: list[str], args: str = "", timeout: int =
     kernel_args = ""
     if kernel_filter:
         kernel_args = f"--kernel-name regex:{kernel_filter} --launch-skip 0 --launch-count 999"
-    cmd = f"ncu --target-processes all --metrics {metrics_str} {kernel_args} {binary_path} {args} 2>&1"
+    cmd = f"ncu --target-processes all --metrics {metrics_str} --csv {kernel_args} {binary_path} {args} 2>&1"
     ok, stdout, stderr = _run_command(cmd, timeout=timeout)
     combined = stdout + stderr
     return ok, combined, ""
@@ -85,21 +94,33 @@ def run_ncu(binary_path: str, metrics: list[str], args: str = "", timeout: int =
 
 def parse_ncu_output(ncu_output: str) -> dict[str, float]:
     results = {}
-    pattern = r"(\S+)\s+(?:\d+[.,]?\d*)\s+(?:%\s+)?(\d+[.,]?\d*)"
+    if "NCU CSV REPORT" in ncu_output or '"Metric Name"' in ncu_output:
+        for line in ncu_output.split("\n"):
+            line = line.strip()
+            if not line or line.startswith("=") or line.startswith("==") or line.startswith("---"):
+                continue
+            if line.startswith('"Metric Name"') or line.startswith("Metric Name"):
+                continue
+            parts = line.split(",")
+            if len(parts) >= 2:
+                metric_name = parts[0].strip().strip('"')
+                metric_value = parts[1].strip().strip('"').replace(",", "").replace("%", "").replace(" ", "")
+                try:
+                    results[metric_name] = float(metric_value)
+                except ValueError:
+                    pass
     for line in ncu_output.split("\n"):
         line = line.strip()
         if not line or line.startswith("=") or line.startswith("-") or line.startswith("=="):
             continue
-        parts = line.split()
-        if len(parts) >= 2:
-            metric_name = parts[0]
-            for part in parts[1:]:
-                part = part.replace(",", "").replace("%", "")
-                try:
-                    results[metric_name] = float(part)
-                    break
-                except ValueError:
-                    continue
+        match = re.match(r"(\S+)\s+.*?(\d+[.,]?\d*(?:[eE][+-]?\d+)?)", line)
+        if match:
+            metric_name = match.group(1).strip()
+            value_str = match.group(2).replace(",", "").replace("%", "")
+            try:
+                results[metric_name] = float(value_str)
+            except ValueError:
+                continue
     return results
 
 
