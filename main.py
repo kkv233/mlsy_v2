@@ -31,7 +31,7 @@ SPECIALIST_MAP = {
     "resource_penalty": ResourcePenaltyAgent,
 }
 
-MAX_ANALYSIS_RETRIES = 2
+MAX_ANALYSIS_RETRIES = 1
 
 
 def select_specialist(task: ProbeTask, llm: LLMClient):

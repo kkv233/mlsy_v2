@@ -29,7 +29,7 @@ class ProbeTask:
 
 
 class SpecialistAgent:
-    def __init__(self, llm: LLMClient, agent_name: str, max_retries: int = 4, execution_timeout: int = 30):
+    def __init__(self, llm: LLMClient, agent_name: str, max_retries: int = 2, execution_timeout: int = 30):
         self.llm = llm
         self.agent_name = agent_name
         self.max_retries = max_retries

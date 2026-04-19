@@ -15,7 +15,7 @@ class LLMClient:
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.max_retries = 3
         self.retry_delay = 10
-        self.request_interval = 5  # seconds between requests to avoid rate limiting
+        self.request_interval = 2  # seconds between requests to avoid rate limiting
         self.last_request_time = 0
 
     def _wait_for_rate_limit(self):
